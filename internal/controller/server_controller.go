@@ -93,6 +93,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			err := r.Get(ctx, types.NamespacedName{Name: server.Name + "-pod", Namespace: server.Namespace}, pod)
 			if err != nil {
 				logger.Info("Failed to get pod for server, nothing to delete")
+				return ctrl.Result{}, nil
 			}
 
 			if err := r.Delete(ctx, pod); err != nil {
@@ -113,6 +114,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		controllerutil.RemoveFinalizer(server, FINALIZER)
 		if err := r.Status().Update(ctx, server); err != nil {
 			logger.Error(err, "Failed to update server status")
+			return ctrl.Result{}, err
 		}
 	}
 
