@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,7 +28,8 @@ import (
 type ServerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Image string `json:"image,omitempty"`
+	Pod              v1.PodSpec `json:"pod,omitempty"`
+	AllowForceDelete bool       `json:"allowForceDelete,omitempty"`
 }
 
 // ServerStatus defines the observed state of Server

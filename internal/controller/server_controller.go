@@ -18,10 +18,14 @@ package controller
 
 import (
 	"context"
-	corev1 "k8s.io/api/core/v1"
+	"github.com/go-logr/logr"
+	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/client-go/tools/record"
@@ -57,96 +61,150 @@ type ServerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.4/pkg/reconcile
 func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := log.FromContext(ctx).WithValues("server", req.Name, "namespace", req.Namespace)
 
+	// Fetch the Server resource
 	server := &networkv1alpha1.Server{}
-	err := r.Get(ctx, req.NamespacedName, server)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, server); err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			logger.Error(err, "Failed to get Server resource")
+		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if meta.IsStatusConditionFalse(server.Status.Conditions, "PodReady") {
-		pod := createPodObject(server, req.Namespace)
-
-		if err := r.Create(ctx, pod); err != nil {
-			logger.Error(err, "Failed to create matching pod for server")
+	// Handle finalizer addition
+	if server.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(server, FINALIZER) {
+		logger.Info("Adding finalizer to Server")
+		controllerutil.AddFinalizer(server, FINALIZER)
+		if err := r.Update(ctx, server); err != nil {
+			logger.Error(err, "Failed to add finalizer")
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, nil
+	}
 
-		meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
-			Type:    "PodReady",
-			Status:  metav1.ConditionTrue,
-			Reason:  "PodCreated",
-			Message: "Pod has been successfully created",
-		})
-		if err := r.Status().Update(ctx, server); err != nil {
-			logger.Error(err, "Failed to update server status")
+	// Handle resource deletion
+	if server.DeletionTimestamp != nil || !server.GetDeletionTimestamp().IsZero() {
+		logger.Info("Handling deletion of Server")
+		if err := r.handleDeletion(ctx, server, logger); err != nil { //todo
+			logger.Error(err, "Failed to handle Server deletion")
+			return ctrl.Result{}, err
 		}
+		logger.Info("Successfully finalized Server, removing finalizer")
+		controllerutil.RemoveFinalizer(server, FINALIZER)
+		if err := r.Update(ctx, server); err != nil {
+			logger.Error(err, "Failed to remove finalizer")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil // Return after finalizer removal
+	}
+
+	// Ensure Pod exists
+	podExists, err := r.ensurePodExists(ctx, server, logger)
+	if err != nil {
+		logger.Error(err, "Failed to ensure Pod exists for Server")
 		return ctrl.Result{}, err
 	}
-
-	if server.CreationTimestamp.IsZero() && controllerutil.ContainsFinalizer(server, FINALIZER) {
-		//Server being deleted...
-		if meta.IsStatusConditionFalse(server.Status.Conditions, "PodDeleted") {
-
-			pod := &corev1.Pod{}
-			err := r.Get(ctx, types.NamespacedName{Name: server.Name + "-pod", Namespace: server.Namespace}, pod)
-			if err != nil {
-				logger.Info("Failed to get pod for server, nothing to delete")
-				return ctrl.Result{}, nil
-			}
-
-			if err := r.Delete(ctx, pod); err != nil {
-				logger.Error(err, "Failed to delete matching pod for server")
-				return ctrl.Result{}, err
-			}
-			meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
-				Type:    "PodDeleted",
-				Status:  metav1.ConditionTrue,
-				Reason:  "PodDeleted",
-				Message: "Pod has been successfully deleted",
-			})
-			if err := r.Status().Update(ctx, server); err != nil {
-				logger.Error(err, "Failed to update server status")
-			}
-			return ctrl.Result{}, nil
-		}
-		controllerutil.RemoveFinalizer(server, FINALIZER)
-		if err := r.Status().Update(ctx, server); err != nil {
-			logger.Error(err, "Failed to update server status")
-			return ctrl.Result{}, err
-		}
+	if !podExists {
+		// If a Pod was created, exit early to requeue the reconciliation
+		return ctrl.Result{}, nil
 	}
 
+	if err := r.Status().Update(ctx, server); err != nil {
+		logger.Error(err, "Failed to update Server resource")
+		return ctrl.Result{}, err
+	}
+	logger.Info("Reconciliation finished")
 	return ctrl.Result{}, nil
-}
-
-func createPodObject(server *networkv1alpha1.Server, namespace string) *corev1.Pod {
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      server.Name + "-pod",
-			Namespace: namespace,
-			Labels: map[string]string{
-				"server": server.Name,
-			},
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:  "server-container",
-					Image: server.Spec.Image,
-				},
-			},
-		},
-	}
-	return pod
-
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ServerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkv1alpha1.Server{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
+		Owns(&corev1.Pod{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 10}).
 		Complete(r)
+}
+
+func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv1alpha1.Server, logger logr.Logger) (bool, error) {
+	pod := &corev1.Pod{}
+	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
+	err := r.Get(ctx, namespacedName, pod)
+
+	if client.IgnoreNotFound(err) != nil {
+		logger.Error(err, "Failed to get Pod resource")
+		meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
+			Type:               "PodFailed",
+			Status:             metav1.ConditionFalse,
+			LastTransitionTime: metav1.Now(),
+			Reason:             "GetPodFailed",
+			Message:            "Failed to retrieve Pod from the cluster",
+		})
+		return false, err
+	}
+
+	if err != nil { // Pod does not exist
+		newPod := utils.GetNewPod(server, server.Namespace)
+		if err := r.Create(ctx, newPod); err != nil {
+			meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
+				Type:               "PodFailed",
+				Status:             metav1.ConditionFalse,
+				LastTransitionTime: metav1.Now(),
+				Reason:             "PodCreationFailed",
+				Message:            "Failed to create the Pod",
+			})
+			return false, err
+		}
+
+		meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
+			Type:               "PodCreated",
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Now(),
+			Reason:             "PodCreatedSuccessfully",
+			Message:            "Pod has been successfully created",
+		})
+		return false, nil
+	}
+
+	meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
+		Type:               "PodCreated",
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Reason:             "PodAlreadyExists",
+		Message:            "Pod already exists",
+	})
+	return true, nil
+}
+
+func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1alpha1.Server, logger logr.Logger) error {
+	pod := &corev1.Pod{}
+	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
+	if err := r.Get(ctx, namespacedName, pod); err != nil {
+		return err
+	}
+	//TODO check if deletion is allowed?
+
+	if pod != nil {
+		if err := r.Delete(ctx, pod); err != nil {
+			meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
+				Type:               "Finalizing",
+				Status:             metav1.ConditionFalse,
+				LastTransitionTime: metav1.Now(),
+				Reason:             "PodDeletionFailed",
+				Message:            "Failed to delete the Pod during finalization",
+			})
+			return err
+		}
+	}
+
+	meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
+		Type:               "Finalizing",
+		Status:             metav1.ConditionTrue,
+		LastTransitionTime: metav1.Now(),
+		Reason:             "PodDeleted",
+		Message:            "Pod successfully deleted during finalization",
+	})
+
+	return nil
 }
