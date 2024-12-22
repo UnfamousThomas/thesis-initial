@@ -40,7 +40,7 @@ import (
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
-var FINALIZER = "servers.unfamousthomas.me/finalizer"
+const SERVER_FINALIZER = "servers.unfamousthomas.me/finalizer"
 
 // ServerReconciler reconciles a Server object
 type ServerReconciler struct {
@@ -76,9 +76,9 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// Handle finalizer addition
-	if server.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(server, FINALIZER) {
+	if server.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(server, SERVER_FINALIZER) {
 		logger.Info("Adding finalizer to Server")
-		controllerutil.AddFinalizer(server, FINALIZER)
+		controllerutil.AddFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
 			logger.Error(err, "Failed to add finalizer")
 			return ctrl.Result{}, err
@@ -94,7 +94,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			return ctrl.Result{}, err
 		}
 		logger.Info("Successfully finalized Server, removing finalizer")
-		controllerutil.RemoveFinalizer(server, FINALIZER)
+		controllerutil.RemoveFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
 			logger.Error(err, "Failed to remove finalizer")
 			return ctrl.Result{}, err
@@ -201,7 +201,7 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	}
 
 	if pod != nil {
-		controllerutil.RemoveFinalizer(pod, FINALIZER)
+		controllerutil.RemoveFinalizer(pod, SERVER_FINALIZER)
 		if err := r.Update(ctx, pod); err != nil {
 			return err
 		}
@@ -239,10 +239,10 @@ func (r *ServerReconciler) ensurePodFinalizer(ctx context.Context, server *netwo
 	if err := r.Get(ctx, namespacedName, pod); err != nil {
 		return false, err
 	}
-	if controllerutil.ContainsFinalizer(pod, FINALIZER) {
+	if controllerutil.ContainsFinalizer(pod, SERVER_FINALIZER) {
 		return false, nil
 	}
-	controllerutil.AddFinalizer(pod, FINALIZER)
+	controllerutil.AddFinalizer(pod, SERVER_FINALIZER)
 	if err := r.Update(ctx, pod); err != nil {
 		logger.Error(err, "Failed to add finalizer to pod")
 		return false, err

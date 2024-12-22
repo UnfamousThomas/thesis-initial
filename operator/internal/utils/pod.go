@@ -32,13 +32,13 @@ func getPodSpec(spec *corev1.PodSpec) *corev1.PodSpec {
 }
 
 func GetNewPod(server *networkv1alpha1.Server, namespace string) *corev1.Pod {
+	labels := server.GetLabels()
+	labels["server"] = server.Name
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      server.Name + "-pod",
 			Namespace: namespace,
-			Labels: map[string]string{
-				"server": server.Name,
-			},
+			Labels:    labels,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(server, networkv1alpha1.GroupVersion.WithKind("Server")),
 			},

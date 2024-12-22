@@ -120,7 +120,7 @@ var _ = Describe("ServerReconciler", func() {
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).To(BeNil())
 			Expect(k8sClient.Get(ctx, namespacedName, server)).To(Succeed())
-			//Expect(controllerutil.ContainsFinalizer(server, FINALIZER)).To(BeTrue())
+			//Expect(controllerutil.ContainsFinalizer(server, SERVER_FINALIZER)).To(BeTrue())
 		})
 
 		It("should create a Pod for the Server", func() {
