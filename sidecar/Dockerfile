@@ -2,7 +2,8 @@ FROM golang:1.23.0 as builder
 
 WORKDIR /workspace
 
-COPY go.mod go.sum ./
+COPY go.mod ./
+#COPY go.sum ./ #Uncomment when we have dependencies
 
 RUN go mod download
 COPY . .
