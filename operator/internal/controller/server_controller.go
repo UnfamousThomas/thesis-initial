@@ -21,11 +21,9 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/unfamousthomas/thesis-operator/internal/scaling"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
-
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -114,6 +112,11 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, nil
 	}
 
+	update, err := r.ensurePodFinalizer(ctx, server, logger)
+	if err != nil || update {
+		return ctrl.Result{}, err
+	}
+
 	if err := r.Status().Update(ctx, server); err != nil {
 		logger.Error(err, "Failed to update Server resource")
 		return ctrl.Result{}, err
@@ -168,6 +171,14 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 			Reason:             "PodCreatedSuccessfully",
 			Message:            "Pod has been successfully created",
 		})
+
+		meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
+			Type:               "PodCreated",
+			Status:             metav1.ConditionTrue,
+			LastTransitionTime: metav1.Now(),
+			Reason:             "PodCreatedSuccessfully",
+			Message:            "Pod has been successfully created",
+		})
 		return false, nil
 	}
 
@@ -187,7 +198,7 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	if err := r.Get(ctx, namespacedName, pod); err != nil {
 		return err
 	}
-	allowed, err := r.DeletionAllowed.IsDeletionAllowed(server)
+	allowed, err := r.DeletionAllowed.IsDeletionAllowed(server, pod)
 	if err != nil {
 		logger.Error(err, "Failed to check if deletion allowed for Server")
 		return err
@@ -198,6 +209,15 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	}
 
 	if pod != nil {
+		controllerutil.RemoveFinalizer(pod, FINALIZER)
+		if err := r.Update(ctx, pod); err != nil {
+			return err
+		}
+
+		if err := r.Get(ctx, namespacedName, pod); err != nil {
+			return err
+		}
+
 		if err := r.Delete(ctx, pod); err != nil {
 			meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
 				Type:               "Finalizing",
@@ -221,17 +241,19 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	return nil
 }
 
-func (*ServerReconciler) IsDeletionAllowed(server *networkv1alpha1.Server) (bool, error) {
-	if server.Spec.AllowForceDelete {
-		return true, nil
+func (r *ServerReconciler) ensurePodFinalizer(ctx context.Context, server *networkv1alpha1.Server, logger logr.Logger) (bool, error) {
+	pod := &corev1.Pod{}
+	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
+	if err := r.Get(ctx, namespacedName, pod); err != nil {
+		return false, err
 	}
-
-	//TODO ask if server can be shutdown from the sidecar
-	if server.Spec.TimeOut != nil {
-		timeWhenAllowDelete := server.GetDeletionTimestamp().Time.Add(server.Spec.TimeOut.Duration)
-		if timeWhenAllowDelete.Before(time.Now()) {
-			return true, nil
-		}
+	if controllerutil.ContainsFinalizer(pod, FINALIZER) {
+		return false, nil
+	}
+	controllerutil.AddFinalizer(pod, FINALIZER)
+	if err := r.Update(ctx, pod); err != nil {
+		logger.Error(err, "Failed to add finalizer to pod")
+		return false, err
 	}
 	return true, nil
 }

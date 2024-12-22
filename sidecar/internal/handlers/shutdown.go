@@ -13,7 +13,8 @@ type shutdownRequest struct {
 	Shutdown bool `json:"shutdown"`
 }
 
-func IsShutdownRequestedByOperator(a *app.App) func(http.ResponseWriter, *http.Request) {
+// IsShutdownRequested is used by the gameserver to check for shutdown requests
+func IsShutdownRequested(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		err := json.NewEncoder(w).Encode(shutdownRequest{Shutdown: shutdown})
@@ -24,7 +25,8 @@ func IsShutdownRequestedByOperator(a *app.App) func(http.ResponseWriter, *http.R
 	})
 }
 
-func SetShutdownAllowedByServer(a *app.App) func(http.ResponseWriter, *http.Request) {
+// SetShutdownRequested is used by the operator to request shutdowns
+func SetShutdownRequested(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		var request shutdownRequest

@@ -1,9 +1,14 @@
 package scaling
 
-import networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
+import (
+	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
+	"github.com/unfamousthomas/thesis-operator/internal/utils"
+	corev1 "k8s.io/api/core/v1"
+	"time"
+)
 
 type Deletion interface {
-	IsDeletionAllowed(*networkv1alpha1.Server) (bool, error)
+	IsDeletionAllowed(*networkv1alpha1.Server, *corev1.Pod) (bool, error)
 }
 
 type PlayerCount interface {
@@ -16,6 +21,21 @@ func (p ProdDeletionChecker) GetPlayerCount(server *networkv1alpha1.Server) (int
 	return 0, nil
 }
 
-func (p ProdDeletionChecker) IsDeletionAllowed(server *networkv1alpha1.Server) (bool, error) {
-	return false, nil
+func (p ProdDeletionChecker) IsDeletionAllowed(server *networkv1alpha1.Server, pod *corev1.Pod) (bool, error) {
+	if server.Spec.AllowForceDelete {
+		return true, nil
+	}
+
+	if server.Spec.TimeOut != nil {
+		timeWhenAllowDelete := server.GetDeletionTimestamp().Time.Add(server.Spec.TimeOut.Duration)
+		if timeWhenAllowDelete.Before(time.Now()) {
+			return true, nil
+		}
+	}
+	err := utils.RequestShutdown(pod)
+	if err != nil {
+		return false, err
+	}
+	allowed, err := utils.IsDeleteAllowed(pod)
+	return allowed, err
 }

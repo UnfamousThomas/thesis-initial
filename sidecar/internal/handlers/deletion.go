@@ -13,6 +13,7 @@ type deleteRequest struct {
 	Allowed bool `json:"allowed"`
 }
 
+// IsDeleteAllowed is used by the operator to check if this can be deleted
 func IsDeleteAllowed(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -24,6 +25,7 @@ func IsDeleteAllowed(a *app.App) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
+// SetDeleteAllowed is used by the server to tell the operator this can be deleted
 func SetDeleteAllowed(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

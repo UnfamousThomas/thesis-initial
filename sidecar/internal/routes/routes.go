@@ -11,8 +11,8 @@ func SetupRoutes(a *app.App) {
 
 	a.Mux.HandleFunc("GET /allow_delete", handlers.IsDeleteAllowed(a))
 	a.Mux.HandleFunc("POST /allow_delete", handlers.SetDeleteAllowed(a))
-	a.Mux.HandleFunc("GET /delete_requested", handlers.IsShutdownRequestedByOperator(a))
-	a.Mux.HandleFunc("POST /delete_requested", handlers.SetShutdownAllowedByServer(a))
+	a.Mux.HandleFunc("GET /shutdown", handlers.IsShutdownRequested(a))
+	a.Mux.HandleFunc("POST /shutdown", handlers.SetShutdownRequested(a))
 	a.Mux.HandleFunc("/health", handlers.Health(a))
 	err := http.ListenAndServe(":8080", a.Mux)
 	if err != nil {
