@@ -67,6 +67,9 @@ spec:
           - --health-probe-bind-address=:8081
         image: controller:latest
         name: manager
+        env:
+          - name: "IMAGE_PULL_SECRET_NAME"
+            value: "ghcr-secret"
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

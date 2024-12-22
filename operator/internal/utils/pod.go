@@ -4,6 +4,7 @@ import (
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
 )
 
 func addContainer(spec *corev1.PodSpec, container corev1.Container) *corev1.PodSpec {
@@ -12,16 +13,22 @@ func addContainer(spec *corev1.PodSpec, container corev1.Container) *corev1.PodS
 }
 
 func getPodSpec(spec *corev1.PodSpec) *corev1.PodSpec {
-	return addContainer(spec, corev1.Container{
+	pod := addContainer(spec, corev1.Container{
 		Name:  "loputoo-sidecar",
-		Image: "nginx:latest", //TODO this should realistically be actual sidecar, this is just a temporary option
+		Image: "sidecar:latest",
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "http",
-				ContainerPort: 80,
+				ContainerPort: 8080,
 			},
 		},
 	})
+
+	pod.ImagePullSecrets = append(pod.ImagePullSecrets, corev1.LocalObjectReference{
+		Name: os.Getenv("IMAGE_PULL_SECRET_NAME"),
+	})
+
+	return pod
 }
 
 func GetNewPod(server *networkv1alpha1.Server, namespace string) *corev1.Pod {

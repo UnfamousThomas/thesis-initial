@@ -1,0 +1,50 @@
+name: Build image and publish
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+    branches:
+      - master
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: write
+    steps:
+      - name: Checkout project sources
+        uses: actions/checkout@v4
+
+
+      - name: Set up environment variables
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF##*/}
+          else
+          VERSION="$(echo ${GITHUB_REF#refs/heads/})-$(echo $GITHUB_SHA | cut -c1-10)"
+          fi
+
+          echo "Version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/sidecar
+          IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+          echo "IMAGE_ID=$IMAGE_ID" >> $GITHUB_ENV 
+
+      - name: Build image
+        run: |
+          docker build ./sidecar/ \
+            --tag "${{ env.IMAGE_ID }}:${{ env.VERSION }}" \
+            --tag "${{ env.IMAGE_ID }}:latest" \
+            --label "runnumber=${GITHUB_RUN_ID}"
+
+      - name: Log in to registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Push images
+        run: |
+          docker push $IMAGE_ID:latest
+          docker push $IMAGE_ID:${{ env.VERSION }}
