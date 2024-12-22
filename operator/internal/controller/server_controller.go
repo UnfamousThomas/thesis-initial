@@ -39,7 +39,7 @@ import (
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
-var FINALIZER = "servers.finalizers.unfamousthomas.me"
+var FINALIZER = "servers.unfamousthomas.me/finalizer"
 
 // ServerReconciler reconciles a Server object
 type ServerReconciler struct {
