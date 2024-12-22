@@ -57,6 +57,8 @@ spec:
         # versions < 1.19 or on vendors versions which do NOT support this field by default (i.e. Openshift < 4.11 ).
         # seccompProfile:
         #   type: RuntimeDefault
+      imagePullSecrets:
+        - name: ghcr-secret
       containers:
       - command:
         - /manager
