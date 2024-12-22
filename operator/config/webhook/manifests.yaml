@@ -10,6 +10,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-network-unfamousthomas-me-v1alpha1-fleet
+  failurePolicy: Fail
+  name: mfleet.kb.io
+  rules:
+  - apiGroups:
+    - network.unfamousthomas.me
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - fleets
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-network-unfamousthomas-me-v1alpha1-server
   failurePolicy: Fail
   name: mserver.kb.io
@@ -30,6 +50,26 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: validating-webhook-configuration
 webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-network-unfamousthomas-me-v1alpha1-fleet
+  failurePolicy: Fail
+  name: vfleet.kb.io
+  rules:
+  - apiGroups:
+    - network.unfamousthomas.me
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - fleets
+  sideEffects: None
 - admissionReviewVersions:
   - v1
   clientConfig:

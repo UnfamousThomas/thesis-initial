@@ -17,21 +17,18 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	"time"
 )
 
 // log is for logging in this package.
-var serverlog = logf.Log.WithName("server-resource")
+var fleetlog = logf.Log.WithName("fleet-resource")
 
 // SetupWebhookWithManager will setup the manager to manage the webhooks
-func (r *Server) SetupWebhookWithManager(mgr ctrl.Manager) error {
+func (r *Fleet) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
 		Complete()
@@ -39,46 +36,43 @@ func (r *Server) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 // TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 
-// +kubebuilder:webhook:path=/mutate-network-unfamousthomas-me-v1alpha1-server,mutating=true,failurePolicy=fail,sideEffects=None,groups=network.unfamousthomas.me,resources=servers,verbs=create;update,versions=v1alpha1,name=mserver.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate-network-unfamousthomas-me-v1alpha1-fleet,mutating=true,failurePolicy=fail,sideEffects=None,groups=network.unfamousthomas.me,resources=fleets,verbs=create;update,versions=v1alpha1,name=mfleet.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Defaulter = &Server{}
+var _ webhook.Defaulter = &Fleet{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
-func (r *Server) Default() {
-	serverlog.Info("default", "name", r.Name)
-
-	r.Spec.AllowForceDelete = false
-	r.Spec.TimeOut = &metav1.Duration{Duration: 10 * time.Minute}
+func (r *Fleet) Default() {
+	fleetlog.Info("default", "name", r.Name)
+	r.Status.CurrentReplicas = 0
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
-// +kubebuilder:webhook:path=/validate-network-unfamousthomas-me-v1alpha1-server,mutating=false,failurePolicy=fail,sideEffects=None,groups=network.unfamousthomas.me,resources=servers,verbs=create;update,versions=v1alpha1,name=vserver.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-network-unfamousthomas-me-v1alpha1-fleet,mutating=false,failurePolicy=fail,sideEffects=None,groups=network.unfamousthomas.me,resources=fleets,verbs=create;update,versions=v1alpha1,name=vfleet.kb.io,admissionReviewVersions=v1
 
-var _ webhook.Validator = &Server{}
+var _ webhook.Validator = &Fleet{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Server) ValidateCreate() (admission.Warnings, error) {
-	serverlog.Info("validate create", "name", r.Name)
+func (r *Fleet) ValidateCreate() (admission.Warnings, error) {
+	fleetlog.Info("validate create", "name", r.Name)
 
-	if len(r.Spec.Pod.Containers) < 1 {
-		return nil, errors.New("at least 1 container required")
-	}
+	// TODO(user): fill in your validation logic upon object creation.
 	return nil, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Server) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	serverlog.Info("validate update", "name", r.Name)
+func (r *Fleet) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+	fleetlog.Info("validate update", "name", r.Name)
 
 	// TODO(user): fill in your validation logic upon object update.
 	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Server) ValidateDelete() (admission.Warnings, error) {
-	serverlog.Info("validate delete", "name", r.Name)
+func (r *Fleet) ValidateDelete() (admission.Warnings, error) {
+	fleetlog.Info("validate delete", "name", r.Name)
 
+	// TODO(user): fill in your validation logic upon object deletion.
 	return nil, nil
 }
