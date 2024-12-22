@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"github.com/go-logr/logr"
 	"github.com/unfamousthomas/thesis-operator/internal/scaling"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
@@ -171,14 +172,6 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 			Reason:             "PodCreatedSuccessfully",
 			Message:            "Pod has been successfully created",
 		})
-
-		meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
-			Type:               "PodCreated",
-			Status:             metav1.ConditionTrue,
-			LastTransitionTime: metav1.Now(),
-			Reason:             "PodCreatedSuccessfully",
-			Message:            "Pod has been successfully created",
-		})
 		return false, nil
 	}
 
@@ -204,8 +197,7 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 		return err
 	}
 	if !allowed {
-		logger.Info("Server deletion not currently allowed")
-		return nil
+		return errors.New("server deletion not allowed")
 	}
 
 	if pod != nil {
