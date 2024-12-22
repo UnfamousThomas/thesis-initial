@@ -39,7 +39,7 @@ func (p TestChecker) GetPlayerCount(server *networkv1alpha1.Server) (int32, erro
 	return 0, nil
 }
 
-func (p TestChecker) IsDeletionAllowed(server *networkv1alpha1.Server) (bool, error) {
+func (p TestChecker) IsDeletionAllowed(server *networkv1alpha1.Server, pod *corev1.Pod) (bool, error) {
 	return allowed, nil
 }
 
