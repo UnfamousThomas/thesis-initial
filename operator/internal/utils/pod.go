@@ -15,7 +15,7 @@ func addContainer(spec *corev1.PodSpec, container corev1.Container) *corev1.PodS
 func getPodSpec(spec *corev1.PodSpec) *corev1.PodSpec {
 	pod := addContainer(spec, corev1.Container{
 		Name:  "loputoo-sidecar",
-		Image: "sidecar:latest",
+		Image: "ghcr.io/unfamousthomas/sidecar:latest",
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "http",
