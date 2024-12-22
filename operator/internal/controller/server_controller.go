@@ -19,9 +19,11 @@ package controller
 import (
 	"context"
 	"github.com/go-logr/logr"
+	"github.com/unfamousthomas/thesis-operator/internal/scaling"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -44,8 +46,10 @@ var FINALIZER = "servers.finalizers.unfamousthomas.me"
 // ServerReconciler reconciles a Server object
 type ServerReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Scheme          *runtime.Scheme
+	Recorder        record.EventRecorder
+	DeletionAllowed scaling.Deletion
+	PlayerCount     scaling.PlayerCount
 }
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=servers,verbs=get;list;watch;create;update;patch;delete
@@ -183,7 +187,15 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	if err := r.Get(ctx, namespacedName, pod); err != nil {
 		return err
 	}
-	//TODO check if deletion is allowed?
+	allowed, err := r.DeletionAllowed.IsDeletionAllowed(server)
+	if err != nil {
+		logger.Error(err, "Failed to check if deletion allowed for Server")
+		return err
+	}
+	if !allowed {
+		logger.Info("Server deletion not currently allowed")
+		return nil
+	}
 
 	if pod != nil {
 		if err := r.Delete(ctx, pod); err != nil {
@@ -207,4 +219,19 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	})
 
 	return nil
+}
+
+func (*ServerReconciler) IsDeletionAllowed(server *networkv1alpha1.Server) (bool, error) {
+	if server.Spec.AllowForceDelete {
+		return true, nil
+	}
+
+	//TODO ask if server can be shutdown from the sidecar
+	if server.Spec.TimeOut != nil {
+		timeWhenAllowDelete := server.GetDeletionTimestamp().Time.Add(server.Spec.TimeOut.Duration)
+		if timeWhenAllowDelete.Before(time.Now()) {
+			return true, nil
+		}
+	}
+	return true, nil
 }

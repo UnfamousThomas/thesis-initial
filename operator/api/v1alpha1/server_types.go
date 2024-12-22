@@ -28,8 +28,9 @@ import (
 type ServerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Pod              v1.PodSpec `json:"pod,omitempty"`
-	AllowForceDelete bool       `json:"allowForceDelete,omitempty"`
+	Pod              v1.PodSpec       `json:"pod,omitempty"`
+	TimeOut          *metav1.Duration `json:"duration"`
+	AllowForceDelete bool             `json:"allowForceDelete,omitempty"`
 }
 
 // ServerStatus defines the observed state of Server

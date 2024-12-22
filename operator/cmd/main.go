@@ -19,6 +19,7 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"github.com/unfamousthomas/thesis-operator/internal/scaling"
 	"go.uber.org/zap/zapcore"
 	"os"
 
@@ -146,10 +147,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	prodChecker := scaling.ProdDeletionChecker{}
+
 	if err = (&controller.ServerReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("server-controller"),
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Recorder:        mgr.GetEventRecorderFor("server-controller"),
+		DeletionAllowed: prodChecker,
+		PlayerCount:     prodChecker,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Server")
 		os.Exit(1)
