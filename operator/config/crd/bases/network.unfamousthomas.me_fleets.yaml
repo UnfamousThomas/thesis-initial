@@ -26,7 +26,7 @@ spec:
             type: object
           spec:
             properties:
-              min_replicas:
+              replicas:
                 format: int32
                 type: integer
               spec:
@@ -3598,7 +3598,7 @@ spec:
                 - duration
                 type: object
             required:
-            - min_replicas
+            - replicas
             - spec
             type: object
           status:

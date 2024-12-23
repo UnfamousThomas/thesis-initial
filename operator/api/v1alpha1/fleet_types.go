@@ -26,7 +26,7 @@ import (
 // FleetSpec defines the desired state of Fleet
 type FleetSpec struct {
 	ServerSpec ServerSpec `json:"spec"`
-	Replicas   int32      `json:"min_replicas"`
+	Replicas   int32      `json:"replicas"`
 }
 
 // FleetStatus defines the observed state of Fleet

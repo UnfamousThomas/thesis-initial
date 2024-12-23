@@ -83,6 +83,11 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, nil // Return after so we do not accidentally scale again
 	}
 
+	servers, err := r.getServers(ctx, fleet, logger)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	fleet.Status.CurrentReplicas = int32(len(servers.Items))
 	if fleet.Spec.Replicas != fleet.Status.CurrentReplicas {
 		if err := r.scaleServerCount(ctx, fleet, req.Namespace, logger); err != nil {
 			return ctrl.Result{}, err
