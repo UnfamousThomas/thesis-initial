@@ -14,7 +14,14 @@ spec:
     singular: fleet
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.scaling.replicas
+      name: Desired Replicas
+      type: integer
+    - jsonPath: .status.current_replicas
+      name: Current Replicas
+      type: integer
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         properties:

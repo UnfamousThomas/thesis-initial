@@ -31,6 +31,12 @@ type FleetSpec struct {
 
 type Priority string
 
+var validPriorities = map[Priority]struct{}{
+	OldestFirst: {},
+	NewestFirst: {},
+	// Add new priorities here as needed
+}
+
 const (
 	OldestFirst Priority = "oldest_first"
 	NewestFirst Priority = "newest_first"
@@ -53,6 +59,8 @@ type FleetStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Desired Replicas",type=integer,JSONPath=`.spec.scaling.replicas`
+// +kubebuilder:printcolumn:name="Current Replicas",type=integer,JSONPath=`.status.current_replicas`
 
 // Fleet is the Schema for the fleets API
 type Fleet struct {
