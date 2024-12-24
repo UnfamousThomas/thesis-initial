@@ -25,8 +25,24 @@ import (
 
 // FleetSpec defines the desired state of Fleet
 type FleetSpec struct {
-	ServerSpec ServerSpec `json:"spec"`
-	Replicas   int32      `json:"replicas"`
+	ServerSpec ServerSpec   `json:"spec"`
+	Scaling    FleetScaling `json:"scaling"`
+}
+
+type Priority string
+
+const (
+	OldestFirst Priority = "oldest_first"
+	NewestFirst Priority = "newest_first"
+)
+
+type FleetScaling struct {
+	// How many replicas of the servers should exist
+	Replicas int32 `json:"replicas"`
+	// If we should first delete the servers where deletion is allowed
+	PrioritizeAllowed bool `json:"prioritizeAllowed"`
+	// Whether we should first delete the oldest or newest
+	AgePriority Priority `json:"agePriority"`
 }
 
 // FleetStatus defines the observed state of Fleet

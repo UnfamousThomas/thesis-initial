@@ -20,10 +20,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
+	"github.com/unfamousthomas/thesis-operator/internal/scaling"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -88,7 +87,7 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 	fleet.Status.CurrentReplicas = int32(len(servers.Items))
-	if fleet.Spec.Replicas != fleet.Status.CurrentReplicas {
+	if fleet.Spec.Scaling.Replicas != fleet.Status.CurrentReplicas {
 		if err := r.scaleServerCount(ctx, fleet, req.Namespace, logger); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -117,9 +116,9 @@ func (r *FleetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1alpha1.Fleet, namespace string, logger logr.Logger) error {
-	if fleet.Status.CurrentReplicas < fleet.Spec.Replicas {
+	if fleet.Status.CurrentReplicas < fleet.Spec.Scaling.Replicas {
 		//Scale up
-		serversNeeded := fleet.Spec.Replicas - fleet.Status.CurrentReplicas
+		serversNeeded := fleet.Spec.Scaling.Replicas - fleet.Status.CurrentReplicas
 		logger.Info(fmt.Sprintf("Scaling servers needed: %d", serversNeeded))
 		for range serversNeeded {
 			server := utils.CreateServerForFleet(*fleet, namespace)
@@ -129,14 +128,19 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 			}
 		}
 	}
-	if fleet.Status.CurrentReplicas > fleet.Spec.Replicas {
-		serversToDelete := fleet.Status.CurrentReplicas - fleet.Spec.Replicas
+	//Scale down
+	if fleet.Status.CurrentReplicas > fleet.Spec.Scaling.Replicas {
+		serversToDelete := fleet.Status.CurrentReplicas - fleet.Spec.Scaling.Replicas
 		logger.Info(fmt.Sprintf("Deleting servers needed: %d", serversToDelete))
 		servers, err := r.getServers(ctx, fleet, logger)
 		if err != nil {
 			return err
 		}
-		if err := r.deleteOneServer(ctx, fleet, servers, logger); err != nil {
+		server, err := scaling.FindDeleteServer(ctx, fleet, servers, r.Client, logger)
+		if err != nil {
+			return err
+		}
+		if err := r.Client.Delete(ctx, server); err != nil {
 			return err
 		}
 	}
@@ -150,63 +154,6 @@ func (r *FleetReconciler) getServers(ctx context.Context, fleet *networkv1alpha1
 		return nil, err
 	}
 	return serverList, nil
-}
-
-func (r *FleetReconciler) deleteOneServer(ctx context.Context, fleet *networkv1alpha1.Fleet, servers *networkv1alpha1.ServerList, logger logr.Logger) error {
-	selectedServer := &networkv1alpha1.Server{}
-	var oldestServer *networkv1alpha1.Server
-
-	for _, server := range servers.Items {
-		podName := server.Name + "-pod"
-		pod := &v1.Pod{}
-		err := r.Client.Get(ctx, types.NamespacedName{Namespace: server.Namespace, Name: podName}, pod)
-		if err != nil {
-			logger.Error(err, "Failed to fetch Pod for server", "server", server.Name)
-			continue
-		}
-
-		// Check if deletion is allowed for this server's pod
-		allowed, err := utils.IsDeleteAllowed(pod)
-		if err != nil {
-			logger.Error(err, "Failed to determine if deletion is allowed", "pod", podName)
-			continue
-		}
-
-		if allowed {
-			// Find the oldest server among those allowed to be deleted
-			if oldestServer == nil || server.CreationTimestamp.Before(&oldestServer.CreationTimestamp) {
-				oldestServer = &server
-			}
-		}
-	}
-
-	// Default to the oldest server if no eligible server is found
-	if oldestServer == nil && len(servers.Items) > 0 {
-		logger.Info("No server eligible for deletion, defaulting to the oldest server")
-		oldestServer = &servers.Items[0]
-		for _, server := range servers.Items {
-			if server.CreationTimestamp.Before(&oldestServer.CreationTimestamp) && server.GetDeletionTimestamp().IsZero() {
-				oldestServer = &server
-			}
-		}
-	}
-
-	if oldestServer == nil {
-		logger.Info("No servers available for deletion")
-		return nil
-	}
-
-	selectedServer = oldestServer
-	logger.Info("Deleting server", "server", selectedServer.Name)
-
-	// Delete the selected server
-	if err := r.Client.Delete(ctx, selectedServer); err != nil {
-		logger.Error(err, "Failed to delete server", "server", selectedServer.Name)
-		return err
-	}
-
-	logger.Info("Server deleted successfully", "server", selectedServer.Name)
-	return nil
 }
 
 func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1alpha1.Fleet, logger logr.Logger) error {

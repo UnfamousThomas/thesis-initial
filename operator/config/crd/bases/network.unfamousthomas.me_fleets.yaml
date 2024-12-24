@@ -26,9 +26,20 @@ spec:
             type: object
           spec:
             properties:
-              replicas:
-                format: int32
-                type: integer
+              scaling:
+                properties:
+                  agePriority:
+                    type: string
+                  prioritizeAllowed:
+                    type: boolean
+                  replicas:
+                    format: int32
+                    type: integer
+                required:
+                - agePriority
+                - prioritizeAllowed
+                - replicas
+                type: object
               spec:
                 properties:
                   allowForceDelete:
@@ -3598,7 +3609,7 @@ spec:
                 - duration
                 type: object
             required:
-            - replicas
+            - scaling
             - spec
             type: object
           status:

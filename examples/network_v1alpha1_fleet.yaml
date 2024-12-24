@@ -6,7 +6,10 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: fleet-sample
 spec:
-  replicas: 3
+  scaling:
+    replicas: 3
+    prioritizeAllowed: true
+    agePriority: oldest_first
   spec:
     duration: 5m
     allowForceDelete: false
