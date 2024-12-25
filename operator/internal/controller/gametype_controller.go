@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -51,6 +52,7 @@ const TypeFinalizer = "gametype.unfamousthomas.me/finalizer"
 func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx).WithValues("gametype", req.Name, "namespace", req.Namespace)
 
+	logger.Info("Reconciling GameType")
 	gametype := &networkv1alpha1.GameType{}
 	if err := r.Get(ctx, req.NamespacedName, gametype); err != nil {
 		logger.Error(err, "Failed to get gametype resource")
@@ -73,10 +75,12 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		logger.Info("Handling deletion of gametype")
 		if err := r.handleDeletion(ctx, gametype, logger); err != nil {
 			logger.Error(err, "Failed to handle gametype deletion")
-			return ctrl.Result{}, err
+			return ctrl.Result{Requeue: true}, err
 		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
+
+	logger.Info("Reconciling gametype updates")
 	result, err2, done := r.handleUpdating(ctx, gametype, logger)
 	if done {
 		return result, err2
@@ -145,6 +149,8 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 func (r *GameTypeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkv1alpha1.GameType{}).
+		Owns(&networkv1alpha1.Fleet{}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 10}).
 		Complete(r)
 }
 

@@ -90,7 +90,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		logger.Info("Handling deletion of Server")
 		if err := r.handleDeletion(ctx, server, logger); err != nil { //todo
 			logger.Error(err, "Failed to handle Server deletion")
-			return ctrl.Result{}, err
+			return ctrl.Result{Requeue: true}, err
 		}
 		logger.Info("Successfully finalized Server, removing finalizer")
 		controllerutil.RemoveFinalizer(server, SERVER_FINALIZER)
