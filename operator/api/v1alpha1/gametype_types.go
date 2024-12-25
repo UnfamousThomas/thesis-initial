@@ -34,9 +34,8 @@ type TypeScaling struct {
 
 // GameTypeStatus defines the observed state of GameType
 type GameTypeStatus struct {
-	Conditions      []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-	CurrentReplicas int                `json:"currentReplicas"`
-	LatestFleetName string             `json:"fleetName"`
+	Conditions       []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	CurrentFleetName string             `json:"fleetName"`
 }
 
 // +kubebuilder:object:root=true

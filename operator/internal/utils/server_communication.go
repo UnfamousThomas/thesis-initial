@@ -1,8 +1,7 @@
-package scaling
+package utils
 
 import (
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
-	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	corev1 "k8s.io/api/core/v1"
 	"time"
 )
@@ -32,10 +31,10 @@ func (p ProdDeletionChecker) IsDeletionAllowed(server *networkv1alpha1.Server, p
 			return true, nil
 		}
 	}
-	err := utils.RequestShutdown(pod)
+	err := RequestShutdown(pod)
 	if err != nil {
 		return false, err
 	}
-	allowed, err := utils.IsDeleteAllowed(pod)
+	allowed, err := IsDeleteAllowed(pod)
 	return allowed, err
 }

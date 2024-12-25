@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"github.com/go-logr/logr"
-	"github.com/unfamousthomas/thesis-operator/internal/scaling"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -47,8 +46,8 @@ type ServerReconciler struct {
 	client.Client
 	Scheme          *runtime.Scheme
 	Recorder        record.EventRecorder
-	DeletionAllowed scaling.Deletion
-	PlayerCount     scaling.PlayerCount
+	DeletionAllowed utils.Deletion
+	PlayerCount     utils.PlayerCount
 }
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=servers,verbs=get;list;watch;create;update;patch;delete

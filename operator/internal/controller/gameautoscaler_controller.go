@@ -19,7 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
-	"github.com/unfamousthomas/thesis-operator/internal/scaling"
+	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/types"
 	"time"
 
@@ -70,7 +70,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	result, err := scaling.SendScaleWebhookRequest(ctx, autoscaler, gametype, r.Client)
+	result, err := utils.SendScaleWebhookRequest(ctx, autoscaler, gametype, r.Client)
 	if err != nil {
 		logger.Error(err, "Failed to send scale webhook")
 		return ctrl.Result{}, err

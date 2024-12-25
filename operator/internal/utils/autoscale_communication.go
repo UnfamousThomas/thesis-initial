@@ -1,4 +1,4 @@
-package scaling
+package utils
 
 import (
 	"bytes"

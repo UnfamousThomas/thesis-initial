@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
-	"github.com/unfamousthomas/thesis-operator/internal/scaling"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -136,7 +135,7 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 		if err != nil {
 			return err
 		}
-		server, err := scaling.FindDeleteServer(ctx, fleet, servers, r.Client, logger)
+		server, err := utils.FindDeleteServer(ctx, fleet, servers, r.Client, logger)
 		if err != nil {
 			return err
 		}

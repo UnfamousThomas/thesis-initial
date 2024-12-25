@@ -20,11 +20,10 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
@@ -78,13 +77,68 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}
 		return ctrl.Result{}, nil
 	}
-
-	if err := r.Status().Update(ctx, gametype); err != nil {
-		logger.Error(err, "Failed to update gametype resource")
-		return ctrl.Result{}, err
+	result, err2, done := r.handleUpdating(ctx, gametype, logger)
+	if done {
+		return result, err2
 	}
+
 	logger.Info("Reconciliation finished")
 	return ctrl.Result{}, nil
+}
+
+func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error, bool) {
+	//Check fleet count, if len(fleets) < 1 then need to create a fleet
+	//Check if currentFleet is up to date with spec
+	//If its not for whatever reason, create a new fleet with the same amount of replicas
+	//If fleet amount is more than 1 then delete the oldest fleet first
+	//If 1 fleet, update its replica count
+
+	fleets, err := utils.GetFleetsForType(ctx, r.Client, gametype, logger)
+	if err != nil {
+		return ctrl.Result{}, err, true
+	}
+	if len(fleets.Items) == 0 {
+		_, err := r.handleCreation(ctx, gametype, logger)
+		if err != nil {
+			return ctrl.Result{}, err, true
+		}
+		return ctrl.Result{}, nil, true
+	}
+	if len(fleets.Items) == 1 {
+		fleet := fleets.Items[0]
+		gametype.Status.CurrentFleetName = fleet.Name
+		if err := r.Status().Update(ctx, gametype); err != nil {
+			return ctrl.Result{}, err, true
+		}
+		if !networkv1alpha1.AreFleetsPodsEqual(&fleet.Spec, &gametype.Spec.FleetSpec) {
+			res, err := r.handleCreation(ctx, gametype, logger)
+			return res, err, true
+		} else {
+			if fleet.Spec.Scaling.Replicas != int32(gametype.Spec.Scaling.CurrentReplicas) {
+				fleet.Spec.Scaling.Replicas = int32(gametype.Spec.Scaling.CurrentReplicas)
+				if err := r.Update(ctx, &fleet); err != nil {
+					return ctrl.Result{}, err, true
+				}
+			}
+		}
+	}
+	if len(fleets.Items) > 1 {
+		var oldestFleet *networkv1alpha1.Fleet
+		for _, fleet := range fleets.Items {
+			if oldestFleet == nil {
+				oldestFleet = &fleet
+			} else if fleet.CreationTimestamp.Before(&oldestFleet.CreationTimestamp) {
+				oldestFleet = &fleet
+			}
+		}
+
+		if oldestFleet != nil && oldestFleet.GetDeletionTimestamp() == nil {
+			if err := r.Delete(ctx, oldestFleet); err != nil {
+				return ctrl.Result{}, err, true
+			}
+		}
+	}
+	return ctrl.Result{}, nil, false
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -111,6 +165,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 			return err
 		}
 		if len(fleets.Items) == 0 {
+
 			controllerutil.RemoveFinalizer(gametype, TYPE_FINALIZER)
 			if err := r.Update(ctx, gametype); err != nil {
 				return err
@@ -118,4 +173,12 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 		}
 	}
 	return nil
+}
+
+func (r *GameTypeReconciler) handleCreation(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error) {
+	fleet := utils.GetFleetObjectForType(gametype)
+	if err := r.Create(ctx, fleet); err != nil {
+		return ctrl.Result{}, err
+	}
+	return ctrl.Result{}, nil
 }

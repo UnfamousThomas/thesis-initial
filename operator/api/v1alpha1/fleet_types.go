@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"reflect"
 )
 
 // FleetSpec defines the desired state of Fleet
@@ -79,4 +80,8 @@ type FleetList struct {
 
 func init() {
 	SchemeBuilder.Register(&Fleet{}, &FleetList{})
+}
+
+func AreFleetsPodsEqual(fleet1, fleet2 *FleetSpec) bool {
+	return reflect.DeepEqual(fleet1.ServerSpec.Pod, fleet2.ServerSpec.Pod)
 }

@@ -1,4 +1,4 @@
-package scaling
+package utils
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
-	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -111,7 +110,7 @@ func isDeleteAllowed(ctx context.Context, server *networkv1alpha1.Server, c clie
 		return false, err
 	}
 
-	allowed, err := utils.IsDeleteAllowed(pod)
+	allowed, err := IsDeleteAllowed(pod)
 	if err != nil {
 		return false, nil
 	}
