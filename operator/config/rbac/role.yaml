@@ -64,6 +64,58 @@ rules:
 - apiGroups:
   - network.unfamousthomas.me
   resources:
+  - gameautoscalers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.unfamousthomas.me
+  resources:
+  - gameautoscalers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - network.unfamousthomas.me
+  resources:
+  - gameautoscalers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - network.unfamousthomas.me
+  resources:
+  - gametypes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.unfamousthomas.me
+  resources:
+  - gametypes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - network.unfamousthomas.me
+  resources:
+  - gametypes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - network.unfamousthomas.me
+  resources:
   - servers
   verbs:
   - create

@@ -34,6 +34,7 @@ func getPodSpec(spec *corev1.PodSpec) *corev1.PodSpec {
 func GetNewPod(server *networkv1alpha1.Server, namespace string) *corev1.Pod {
 	labels := server.GetLabels()
 	labels["server"] = server.Name
+	//TODO pass fleet, server and gametype as env variable
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      server.Name + "-pod",

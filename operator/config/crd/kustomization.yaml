@@ -4,6 +4,8 @@
 resources:
 - bases/network.unfamousthomas.me_servers.yaml
 - bases/network.unfamousthomas.me_fleets.yaml
+- bases/network.unfamousthomas.me_gametypes.yaml
+- bases/network.unfamousthomas.me_gameautoscalers.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
@@ -17,6 +19,8 @@ patches:
 # patches here are for enabling the CA injection for each CRD
 - path: patches/cainjection_in_servers.yaml
 #- path: patches/cainjection_in_fleets.yaml
+#- path: patches/cainjection_in_gametypes.yaml
+#- path: patches/cainjection_in_gameautoscalers.yaml
 # +kubebuilder:scaffold:crdkustomizecainjectionpatch
 
 # [WEBHOOK] To enable webhook, uncomment the following section

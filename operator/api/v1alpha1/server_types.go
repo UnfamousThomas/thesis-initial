@@ -21,9 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // ServerSpec defines the desired state of Server
 type ServerSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -36,9 +33,6 @@ type ServerSpec struct {
 // ServerStatus defines the observed state of Server
 type ServerStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 }
 
 // +kubebuilder:object:root=true

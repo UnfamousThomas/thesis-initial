@@ -2,4 +2,6 @@
 resources:
 - network_v1alpha1_server.yaml
 - network_v1alpha1_fleet.yaml
+- network_v1alpha1_gametype.yaml
+- network_v1alpha1_gameautoscaler.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,27 @@
+# permissions for end users to edit gametypes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: loputoo
+    app.kubernetes.io/managed-by: kustomize
+  name: gametype-editor-role
+rules:
+- apiGroups:
+  - network.unfamousthomas.me
+  resources:
+  - gametypes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - network.unfamousthomas.me
+  resources:
+  - gametypes/status
+  verbs:
+  - get

@@ -22,6 +22,10 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the Project itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
+- gameautoscaler_editor_role.yaml
+- gameautoscaler_viewer_role.yaml
+- gametype_editor_role.yaml
+- gametype_viewer_role.yaml
 - fleet_editor_role.yaml
 - fleet_viewer_role.yaml
 - server_editor_role.yaml

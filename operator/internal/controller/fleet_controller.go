@@ -75,7 +75,7 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// Handle resource deletion
 	if fleet.DeletionTimestamp != nil || !fleet.GetDeletionTimestamp().IsZero() {
 		logger.Info("Handling deletion of fleet")
-		if err := r.handleDeletion(ctx, fleet, logger); err != nil { //todo
+		if err := r.handleDeletion(ctx, fleet, logger); err != nil {
 			logger.Error(err, "Failed to handle fleet deletion")
 			return ctrl.Result{}, err
 		}

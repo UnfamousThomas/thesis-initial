@@ -37,4 +37,22 @@ resources:
     defaulting: true
     validation: true
     webhookVersion: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: unfamousthomas.me
+  group: network
+  kind: GameType
+  path: github.com/unfamousthomas/thesis-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: unfamousthomas.me
+  group: network
+  kind: GameAutoscaler
+  path: github.com/unfamousthomas/thesis-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"
