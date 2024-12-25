@@ -42,7 +42,7 @@ func SendScaleWebhookRequest(context context.Context, autoscaler *networkv1alpha
 
 	request := AutoscaleRequest{
 		GameName:        autoscaler.Spec.GameName,
-		CurrentReplicas: gametype.Status.CurrentReplicas,
+		CurrentReplicas: gametype.Spec.Scaling.CurrentReplicas,
 		MinReplicas:     gametype.Spec.Scaling.MinReplicas,
 		MaxReplicas:     gametype.Spec.Scaling.MaxReplicas,
 	}
