@@ -52,7 +52,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	autoscaler := &networkv1alpha1.GameAutoscaler{}
 	if err := r.Get(ctx, req.NamespacedName, autoscaler); err != nil {
 		logger.Error(err, "Failed to get autoscaler resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	gametype := &networkv1alpha1.GameType{}
@@ -62,7 +62,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	if err := r.Get(ctx, namespacedGametype, gametype); err != nil {
 		logger.Error(err, "Failed to get gametype resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	if autoscaler.Spec.AutoscalePolicy.Type != networkv1alpha1.Webhook {
@@ -73,7 +73,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	result, err := utils.SendScaleWebhookRequest(ctx, autoscaler, gametype, r.Client)
 	if err != nil {
 		logger.Error(err, "Failed to send scale webhook")
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 
 	if autoscaler.Spec.Sync.Type != networkv1alpha1.FixedInterval {

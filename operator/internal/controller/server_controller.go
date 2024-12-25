@@ -109,7 +109,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 	if !podExists {
 		// If a Pod was created, exit early to requeue the reconciliation
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	update, err := r.ensurePodFinalizer(ctx, server, logger)

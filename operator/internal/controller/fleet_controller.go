@@ -66,9 +66,9 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		controllerutil.AddFinalizer(fleet, FLEET_FINALIZER)
 		if err := r.Update(ctx, fleet); err != nil {
 			logger.Error(err, "Failed to add finalizer to fleet")
-			return ctrl.Result{}, err
+			return ctrl.Result{Requeue: true}, err
 		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Handle resource deletion
@@ -83,7 +83,7 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	servers, err := r.getServers(ctx, fleet, logger)
 	if err != nil {
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 	fleet.Status.CurrentReplicas = int32(len(servers.Items))
 	if fleet.Spec.Scaling.Replicas != fleet.Status.CurrentReplicas {
@@ -92,17 +92,17 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 		servers, err := r.getServers(ctx, fleet, logger)
 		if err != nil {
-			return ctrl.Result{}, err
+			return ctrl.Result{Requeue: true}, err
 		}
 		fleet.Status.CurrentReplicas = int32(len(servers.Items))
 	}
 
 	if err := r.Status().Update(ctx, fleet); err != nil {
 		logger.Error(err, "Failed to update Fleet resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{Requeue: true}, err
 	}
 	logger.Info("Reconciliation finished")
-	return ctrl.Result{}, nil
+	return ctrl.Result{Requeue: true}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

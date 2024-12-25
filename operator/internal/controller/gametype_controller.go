@@ -65,9 +65,9 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		controllerutil.AddFinalizer(gametype, TypeFinalizer)
 		if err := r.Update(ctx, gametype); err != nil {
 			logger.Error(err, "Failed to add finalizer to gametype")
-			return ctrl.Result{}, err
+			return ctrl.Result{Requeue: true}, err
 		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Handle resource deletion
@@ -81,13 +81,13 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	logger.Info("Reconciling gametype updates")
-	result, err2, done := r.handleUpdating(ctx, gametype, logger)
+	result, err, done := r.handleUpdating(ctx, gametype, logger)
 	if done {
-		return result, err2
+		return result, err
 	}
 
 	logger.Info("Reconciliation finished")
-	return ctrl.Result{}, nil
+	return ctrl.Result{Requeue: true}, nil
 }
 
 func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error, bool) {
@@ -104,15 +104,15 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 	if len(fleets.Items) == 0 {
 		_, err := r.handleCreation(ctx, gametype, logger)
 		if err != nil {
-			return ctrl.Result{}, err, true
+			return ctrl.Result{Requeue: true}, err, true
 		}
-		return ctrl.Result{}, nil, true
+		return ctrl.Result{Requeue: true}, nil, true
 	}
 	if len(fleets.Items) == 1 {
 		fleet := fleets.Items[0]
 		gametype.Status.CurrentFleetName = fleet.Name
 		if err := r.Status().Update(ctx, gametype); err != nil {
-			return ctrl.Result{}, err, true
+			return ctrl.Result{Requeue: true}, err, true
 		}
 		if !networkv1alpha1.AreFleetsPodsEqual(&fleet.Spec, &gametype.Spec.FleetSpec) {
 			res, err := r.handleCreation(ctx, gametype, logger)
@@ -121,7 +121,7 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 			if fleet.Spec.Scaling.Replicas != int32(gametype.Spec.Scaling.CurrentReplicas) {
 				fleet.Spec.Scaling.Replicas = int32(gametype.Spec.Scaling.CurrentReplicas)
 				if err := r.Update(ctx, &fleet); err != nil {
-					return ctrl.Result{}, err, true
+					return ctrl.Result{Requeue: true}, err, true
 				}
 			}
 		}

@@ -21,6 +21,9 @@ func (p ProdDeletionChecker) GetPlayerCount(server *networkv1alpha1.Server) (int
 }
 
 func (p ProdDeletionChecker) IsDeletionAllowed(server *networkv1alpha1.Server, pod *corev1.Pod) (bool, error) {
+	if pod.Status.Phase != corev1.PodRunning {
+		return true, nil
+	}
 	if server.Spec.AllowForceDelete {
 		return true, nil
 	}
