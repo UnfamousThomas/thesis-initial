@@ -3616,15 +3616,9 @@ spec:
                 type: object
               scaling:
                 properties:
-                  maxReplicas:
-                    type: integer
-                  minReplicas:
-                    type: integer
                   replicas:
                     type: integer
                 required:
-                - maxReplicas
-                - minReplicas
                 - replicas
                 type: object
             required:

@@ -27,8 +27,6 @@ type GameTypeSpec struct {
 }
 
 type TypeScaling struct {
-	MinReplicas     int `json:"minReplicas"`
-	MaxReplicas     int `json:"maxReplicas"`
 	CurrentReplicas int `json:"replicas"`
 }
 
