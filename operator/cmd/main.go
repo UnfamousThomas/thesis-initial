@@ -19,11 +19,10 @@ package main
 import (
 	"crypto/tls"
 	"flag"
+	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"os"
 
 	"go.uber.org/zap/zapcore"
-
-	"github.com/unfamousthomas/thesis-operator/internal/scaling"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -149,7 +148,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	prodChecker := scaling.ProdDeletionChecker{}
+	prodChecker := utils.ProdDeletionChecker{}
 
 	if err = (&controller.ServerReconciler{
 		Client:          mgr.GetClient(),

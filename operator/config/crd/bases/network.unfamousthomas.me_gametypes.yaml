@@ -3669,12 +3669,9 @@ spec:
                   - type
                   type: object
                 type: array
-              currentReplicas:
-                type: integer
               fleetName:
                 type: string
             required:
-            - currentReplicas
             - fleetName
             type: object
         type: object

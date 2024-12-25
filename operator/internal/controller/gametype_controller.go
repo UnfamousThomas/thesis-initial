@@ -35,7 +35,7 @@ type GameTypeReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-const TYPE_FINALIZER = "gametype.unfamousthomas.me/finalizer"
+const TypeFinalizer = "gametype.unfamousthomas.me/finalizer"
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=gametypes,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=gametypes/status,verbs=get;update;patch
@@ -58,9 +58,9 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	// Handle finalizer addition
-	if gametype.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(gametype, TYPE_FINALIZER) {
+	if gametype.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(gametype, TypeFinalizer) {
 		logger.Info("Adding finalizer to gametype")
-		controllerutil.AddFinalizer(gametype, TYPE_FINALIZER)
+		controllerutil.AddFinalizer(gametype, TypeFinalizer)
 		if err := r.Update(ctx, gametype); err != nil {
 			logger.Error(err, "Failed to add finalizer to gametype")
 			return ctrl.Result{}, err
@@ -149,7 +149,7 @@ func (r *GameTypeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) error {
-	if controllerutil.ContainsFinalizer(gametype, TYPE_FINALIZER) {
+	if controllerutil.ContainsFinalizer(gametype, TypeFinalizer) {
 		//Finalizer not yet removed, we can presume that fleet deletion in progress or starting
 		fleets, err := utils.GetFleetsForType(ctx, r.Client, gametype, logger)
 		if err != nil {
@@ -166,7 +166,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 		}
 		if len(fleets.Items) == 0 {
 
-			controllerutil.RemoveFinalizer(gametype, TYPE_FINALIZER)
+			controllerutil.RemoveFinalizer(gametype, TypeFinalizer)
 			if err := r.Update(ctx, gametype); err != nil {
 				return err
 			}
@@ -178,6 +178,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 func (r *GameTypeReconciler) handleCreation(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error) {
 	fleet := utils.GetFleetObjectForType(gametype)
 	if err := r.Create(ctx, fleet); err != nil {
+		logger.Error(err, "failed to create a new fleet for gametype")
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
