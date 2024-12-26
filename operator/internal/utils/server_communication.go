@@ -10,15 +10,7 @@ type Deletion interface {
 	IsDeletionAllowed(*networkv1alpha1.Server, *corev1.Pod) (bool, error)
 }
 
-type PlayerCount interface {
-	GetPlayerCount(*networkv1alpha1.Server) (int32, error)
-}
-
 type ProdDeletionChecker struct{}
-
-func (p ProdDeletionChecker) GetPlayerCount(server *networkv1alpha1.Server) (int32, error) {
-	return 0, nil
-}
 
 func (p ProdDeletionChecker) IsDeletionAllowed(server *networkv1alpha1.Server, pod *corev1.Pod) (bool, error) {
 	if pod.Status.Phase != corev1.PodRunning {

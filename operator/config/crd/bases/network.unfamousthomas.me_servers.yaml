@@ -3589,8 +3589,6 @@ spec:
                 required:
                 - containers
                 type: object
-            required:
-            - duration
             type: object
           status:
             properties:

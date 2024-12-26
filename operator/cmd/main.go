@@ -155,7 +155,6 @@ func main() {
 		Scheme:          mgr.GetScheme(),
 		Recorder:        mgr.GetEventRecorderFor("server-controller"),
 		DeletionAllowed: prodChecker,
-		PlayerCount:     prodChecker,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Server")
 		os.Exit(1)

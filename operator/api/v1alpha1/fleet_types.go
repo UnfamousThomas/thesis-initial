@@ -43,6 +43,7 @@ const (
 type FleetScaling struct {
 	// How many replicas of the servers should exist
 	Replicas int32 `json:"replicas"`
+	// +kubebuilder:validation:Optional
 	// If we should first delete the servers where deletion is allowed
 	PrioritizeAllowed bool `json:"prioritizeAllowed"`
 	// Whether we should first delete the oldest or newest

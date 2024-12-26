@@ -23,9 +23,11 @@ import (
 
 // ServerSpec defines the desired state of Server
 type ServerSpec struct {
-	Pod              v1.PodSpec       `json:"pod,omitempty"`
-	TimeOut          *metav1.Duration `json:"duration"`
-	AllowForceDelete bool             `json:"allowForceDelete,omitempty"`
+	Pod v1.PodSpec `json:"pod,omitempty"`
+	// +kubebuilder:validation:Optional
+	TimeOut *metav1.Duration `json:"duration"`
+	// +kubebuilder:validation:Optional
+	AllowForceDelete bool `json:"allowForceDelete,omitempty"`
 }
 
 // ServerStatus defines the observed state of Server

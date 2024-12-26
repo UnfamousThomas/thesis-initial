@@ -24,6 +24,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,16 +32,17 @@ import (
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
-var allowed bool = false
-
-type TestChecker struct{}
-
-func (p TestChecker) GetPlayerCount(server *networkv1alpha1.Server) (int32, error) {
-	return 0, nil
+type TestChecker struct {
+	deleteAllowed map[string]bool
 }
 
 func (p TestChecker) IsDeletionAllowed(server *networkv1alpha1.Server, pod *corev1.Pod) (bool, error) {
-	return allowed, nil
+	//Basically for mocking deletion allowing behaviour, we just use a map
+	return p.deleteAllowed[server.Name], nil
+}
+
+var checker = TestChecker{
+	deleteAllowed: make(map[string]bool),
 }
 
 var _ = Describe("ServerReconciler", func() {
@@ -62,12 +64,11 @@ var _ = Describe("ServerReconciler", func() {
 				Name:      ServerName,
 				Namespace: ServerNamespace,
 			}
-			checker := TestChecker{}
+
 			reconciler = &ServerReconciler{
 				Client:          k8sClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
-				PlayerCount:     checker,
 			}
 
 			By("Creating a Server resource")
@@ -87,7 +88,10 @@ var _ = Describe("ServerReconciler", func() {
 					},
 				},
 			}
-			Expect(k8sClient.Create(ctx, server)).To(Succeed())
+			//Do not allow deletions
+			checker.deleteAllowed[server.Name] = false
+			err := k8sClient.Create(ctx, server)
+			Expect(err).To(Succeed())
 		})
 
 		AfterEach(func() {
@@ -99,9 +103,15 @@ var _ = Describe("ServerReconciler", func() {
 			Expect(err).To(BeNil())
 			err = k8sClient.Get(ctx, namespacedName, server)
 			if err == nil {
+				//Try to delete
 				Expect(k8sClient.Delete(ctx, server)).To(Succeed())
+				//This should allow due to delete not being allowed
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+				Expect(err).To(Not(BeNil()))
+				checker.deleteAllowed[server.Name] = true
+				_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 				Expect(err).To(BeNil())
+
 				// Wait until the resource is deleted
 				Eventually(func() bool {
 					err := k8sClient.Get(ctx, namespacedName, server)
@@ -120,7 +130,7 @@ var _ = Describe("ServerReconciler", func() {
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).To(BeNil())
 			Expect(k8sClient.Get(ctx, namespacedName, server)).To(Succeed())
-			//Expect(controllerutil.ContainsFinalizer(server, SERVER_FINALIZER)).To(BeTrue())
+			Expect(controllerutil.ContainsFinalizer(server, SERVER_FINALIZER)).To(BeTrue())
 		})
 
 		It("should create a Pod for the Server", func() {

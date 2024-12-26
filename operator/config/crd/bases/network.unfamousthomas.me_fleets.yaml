@@ -44,7 +44,6 @@ spec:
                     type: integer
                 required:
                 - agePriority
-                - prioritizeAllowed
                 - replicas
                 type: object
               spec:
@@ -3612,8 +3611,6 @@ spec:
                     required:
                     - containers
                     type: object
-                required:
-                - duration
                 type: object
             required:
             - scaling

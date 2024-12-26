@@ -47,7 +47,6 @@ type ServerReconciler struct {
 	Scheme          *runtime.Scheme
 	Recorder        record.EventRecorder
 	DeletionAllowed utils.Deletion
-	PlayerCount     utils.PlayerCount
 }
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=servers,verbs=get;list;watch;create;update;patch;delete
@@ -141,13 +140,6 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 
 	if client.IgnoreNotFound(err) != nil {
 		logger.Error(err, "Failed to get Pod resource")
-		meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
-			Type:               "PodFailed",
-			Status:             metav1.ConditionFalse,
-			LastTransitionTime: metav1.Now(),
-			Reason:             "GetPodFailed",
-			Message:            "Failed to retrieve Pod from the cluster",
-		})
 		return false, err
 	}
 
@@ -173,14 +165,6 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 		})
 		return false, nil
 	}
-
-	meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
-		Type:               "PodCreated",
-		Status:             metav1.ConditionTrue,
-		LastTransitionTime: metav1.Now(),
-		Reason:             "PodAlreadyExists",
-		Message:            "Pod already exists",
-	})
 	return true, nil
 }
 
@@ -210,13 +194,6 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 		}
 
 		if err := r.Delete(ctx, pod); err != nil {
-			meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
-				Type:               "Finalizing",
-				Status:             metav1.ConditionFalse,
-				LastTransitionTime: metav1.Now(),
-				Reason:             "PodDeletionFailed",
-				Message:            "Failed to delete the Pod during finalization",
-			})
 			return err
 		}
 	}
