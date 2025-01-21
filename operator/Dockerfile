@@ -11,7 +11,7 @@ COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY internal/ internal/
 
-RUN CGO_ENABLED=0 GOARCH=arm64 go build -a -o manager cmd/main.go
+RUN CGO_ENABLED=0 GOARCH=amd64 go build -a -o manager cmd/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
