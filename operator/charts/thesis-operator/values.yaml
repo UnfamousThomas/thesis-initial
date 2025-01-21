@@ -12,7 +12,7 @@ controllerManager:
     env:
       imagePullSecretName: ghcr-secret
     image:
-      repository: controller
+      repository: ghcr.io/unfamousthomas/controller
       tag: latest
     resources:
       limits:
