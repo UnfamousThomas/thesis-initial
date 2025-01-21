@@ -2,27 +2,21 @@ package utils
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 	"net/http"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"time"
 )
 
-type AutoscaleRequest struct {
-	GameName        string `json:"game_name"`
-	CurrentReplicas int    `json:"current_replicas"`
+type Webhook interface {
+	SendScaleWebhookRequest(autoscaler *networkv1alpha1.GameAutoscaler, gametype *networkv1alpha1.GameType) (AutoscaleResponse, error)
 }
 
-type AutoscaleResponse struct {
-	Scale           bool `json:"scale"`
-	DesiredReplicas int  `json:"desired_replicas"`
-}
+type ProductionWebhookRequest struct{}
 
-func SendScaleWebhookRequest(context context.Context, autoscaler *networkv1alpha1.GameAutoscaler, gametype *networkv1alpha1.GameType, c client.Client) (AutoscaleResponse, error) {
-
+func (w ProductionWebhookRequest) SendScaleWebhookRequest(autoscaler *networkv1alpha1.GameAutoscaler,
+	gametype *networkv1alpha1.GameType) (AutoscaleResponse, error) {
 	autoscalerSpec := autoscaler.Spec.AutoscalePolicy.WebhookAutoscalerSpec
 
 	var url string
@@ -65,4 +59,14 @@ func SendScaleWebhookRequest(context context.Context, autoscaler *networkv1alpha
 		return AutoscaleResponse{}, err
 	}
 	return response, nil
+}
+
+type AutoscaleRequest struct {
+	GameName        string `json:"game_name"`
+	CurrentReplicas int    `json:"current_replicas"`
+}
+
+type AutoscaleResponse struct {
+	Scale           bool `json:"scale"`
+	DesiredReplicas int  `json:"desired_replicas"`
 }

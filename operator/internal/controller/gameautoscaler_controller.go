@@ -34,7 +34,8 @@ import (
 // GameAutoscalerReconciler reconciles a GameAutoscaler object
 type GameAutoscalerReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme  *runtime.Scheme
+	Webhook utils.Webhook
 }
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=gameautoscalers,verbs=get;list;watch;create;update;patch;delete
@@ -70,7 +71,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, nil
 	}
 
-	result, err := utils.SendScaleWebhookRequest(ctx, autoscaler, gametype, r.Client)
+	result, err := r.Webhook.SendScaleWebhookRequest(autoscaler, gametype)
 	if err != nil {
 		logger.Error(err, "Failed to send scale webhook")
 		return ctrl.Result{Requeue: true}, err

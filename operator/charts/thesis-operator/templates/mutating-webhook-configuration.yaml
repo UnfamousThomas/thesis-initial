@@ -1,0 +1,49 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "thesis-operator.fullname" . }}-mutating-webhook-configuration
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "thesis-operator.fullname" . }}-serving-cert
+  labels:
+  {{- include "thesis-operator.labels" . | nindent 4 }}
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: '{{ include "thesis-operator.fullname" . }}-webhook-service'
+      namespace: '{{ .Release.Namespace }}'
+      path: /mutate-network-unfamousthomas-me-v1alpha1-fleet
+  failurePolicy: Fail
+  name: mfleet.kb.io
+  rules:
+  - apiGroups:
+    - network.unfamousthomas.me
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - fleets
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: '{{ include "thesis-operator.fullname" . }}-webhook-service'
+      namespace: '{{ .Release.Namespace }}'
+      path: /mutate-network-unfamousthomas-me-v1alpha1-server
+  failurePolicy: Fail
+  name: mserver.kb.io
+  rules:
+  - apiGroups:
+    - network.unfamousthomas.me
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - servers
+  sideEffects: None

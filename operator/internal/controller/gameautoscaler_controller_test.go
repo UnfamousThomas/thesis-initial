@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"github.com/unfamousthomas/thesis-operator/internal/utils"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,7 +31,15 @@ import (
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
+type TestWebhook struct{}
+
+func (t TestWebhook) SendScaleWebhookRequest(autoscaler *networkv1alpha1.GameAutoscaler, gametype *networkv1alpha1.GameType) (utils.AutoscaleResponse, error) {
+	//TODO
+	panic("implement me")
+}
+
 var _ = Describe("GameAutoscaler Controller", func() {
+
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -38,7 +47,7 @@ var _ = Describe("GameAutoscaler Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
 		gameautoscaler := &networkv1alpha1.GameAutoscaler{}
 
@@ -51,14 +60,26 @@ var _ = Describe("GameAutoscaler Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: networkv1alpha1.GameAutoscalerSpec{
+						GameName: "some-random-game",
+						AutoscalePolicy: networkv1alpha1.AutoscalePolicy{
+							Type: networkv1alpha1.Webhook,
+							WebhookAutoscalerSpec: networkv1alpha1.WebhookAutoscalerSpec{
+								Path: "/scale",
+								Service: networkv1alpha1.Service{
+									Name:      "some-random-service",
+									Namespace: metav1.NamespaceDefault,
+									Port:      8080,
+								},
+							},
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &networkv1alpha1.GameAutoscaler{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
@@ -69,8 +90,9 @@ var _ = Describe("GameAutoscaler Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &GameAutoscalerReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:  k8sClient,
+				Scheme:  k8sClient.Scheme(),
+				Webhook: &TestWebhook{},
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

@@ -38,7 +38,7 @@ var _ = Describe("Fleet Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
 		fleet := &networkv1alpha1.Fleet{}
 
@@ -51,14 +51,19 @@ var _ = Describe("Fleet Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: networkv1alpha1.FleetSpec{
+						Scaling: networkv1alpha1.FleetScaling{
+							Replicas:          3,
+							PrioritizeAllowed: false,
+							AgePriority:       networkv1alpha1.OldestFirst,
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &networkv1alpha1.Fleet{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())

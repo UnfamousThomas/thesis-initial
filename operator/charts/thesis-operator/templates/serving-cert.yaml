@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "thesis-operator.fullname" . }}-serving-cert
+  labels:
+  {{- include "thesis-operator.labels" . | nindent 4 }}
+spec:
+  dnsNames:
+  - '{{ include "thesis-operator.fullname" . }}-webhook-service.{{ .Release.Namespace
+    }}.svc'
+  - '{{ include "thesis-operator.fullname" . }}-webhook-service.{{ .Release.Namespace
+    }}.svc.{{ .Values.kubernetesClusterDomain }}'
+  issuerRef:
+    kind: Issuer
+    name: '{{ include "thesis-operator.fullname" . }}-selfsigned-issuer'
+  secretName: webhook-server-cert
