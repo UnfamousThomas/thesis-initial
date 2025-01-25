@@ -12,8 +12,9 @@ func addContainer(spec *corev1.PodSpec, container corev1.Container) *corev1.PodS
 	return spec
 }
 
-func getPodSpec(spec *corev1.PodSpec) *corev1.PodSpec {
-	pod := addContainer(spec, corev1.Container{
+func getPodSpec(server *networkv1alpha1.Server) *corev1.PodSpec {
+	spec := server.Spec
+	pod := addContainer(&spec.Pod, corev1.Container{
 		Name:  "loputoo-sidecar",
 		Image: "ghcr.io/unfamousthomas/sidecar:latest",
 		Ports: []corev1.ContainerPort{
@@ -23,6 +24,30 @@ func getPodSpec(spec *corev1.PodSpec) *corev1.PodSpec {
 			},
 		},
 	})
+	for _, container := range pod.Containers {
+		container.Env = append(container.Env, corev1.EnvVar{
+			Name:  "CONTAINER_IMAGE",
+			Value: container.Image,
+		})
+		container.Env = append(container.Env, corev1.EnvVar{
+			Name:  "SERVER_NAME",
+			Value: server.Name,
+		})
+		if fleet, ok := server.Labels["fleet"]; ok {
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "FLEET_NAME",
+				Value: fleet,
+			})
+		}
+
+		if fleet, ok := server.Labels["type"]; ok {
+			container.Env = append(container.Env, corev1.EnvVar{
+				Name:  "GAME_NAME",
+				Value: fleet,
+			})
+		}
+
+	}
 
 	pod.ImagePullSecrets = append(pod.ImagePullSecrets, corev1.LocalObjectReference{
 		Name: os.Getenv("IMAGE_PULL_SECRET_NAME"),
@@ -37,7 +62,6 @@ func GetNewPod(server *networkv1alpha1.Server, namespace string) *corev1.Pod {
 		labels = make(map[string]string)
 	}
 	labels["server"] = server.Name
-	//TODO pass fleet, server and gametype as env variable
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      server.Name + "-pod",
@@ -47,7 +71,7 @@ func GetNewPod(server *networkv1alpha1.Server, namespace string) *corev1.Pod {
 				*metav1.NewControllerRef(server, networkv1alpha1.GroupVersion.WithKind("Server")),
 			},
 		},
-		Spec: *getPodSpec(&server.Spec.Pod),
+		Spec: *getPodSpec(server),
 	}
 	return pod
 }
