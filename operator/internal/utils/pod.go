@@ -24,7 +24,8 @@ func getPodSpec(server *networkv1alpha1.Server) *corev1.PodSpec {
 			},
 		},
 	})
-	for _, container := range pod.Containers {
+	for i := range pod.Containers {
+		container := &pod.Containers[i]
 		container.Env = append(container.Env, corev1.EnvVar{
 			Name:  "CONTAINER_IMAGE",
 			Value: container.Image,
