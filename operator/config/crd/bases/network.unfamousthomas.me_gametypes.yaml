@@ -45,8 +45,6 @@ spec:
                     properties:
                       allowForceDelete:
                         type: boolean
-                      duration:
-                        type: string
                       pod:
                         properties:
                           activeDeadlineSeconds:
@@ -3606,6 +3604,8 @@ spec:
                         required:
                         - containers
                         type: object
+                      timeout:
+                        type: string
                     type: object
                 required:
                 - scaling

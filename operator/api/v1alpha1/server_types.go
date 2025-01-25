@@ -25,7 +25,7 @@ import (
 type ServerSpec struct {
 	Pod v1.PodSpec `json:"pod,omitempty"`
 	// +kubebuilder:validation:Optional
-	TimeOut *metav1.Duration `json:"duration"`
+	TimeOut *metav1.Duration `json:"timeout"`
 	// +kubebuilder:validation:Optional
 	AllowForceDelete bool `json:"allowForceDelete,omitempty"`
 }
