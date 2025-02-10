@@ -46,15 +46,24 @@ func getPodSpec(server *networkv1alpha1.Server) *corev1.PodSpec {
 				Name:  "GAME_NAME",
 				Value: fleet,
 			})
-			container.Env = append(container.Env, corev1.EnvVar{
-				Name: "POD_IP",
-				ValueFrom: &corev1.EnvVarSource{
-					FieldRef: &corev1.ObjectFieldSelector{
-						FieldPath: "status.podIP",
-					},
-				},
-			})
 		}
+		container.Env = append(container.Env, corev1.EnvVar{
+			Name: "POD_IP",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath: "status.podIP",
+				},
+			},
+		})
+		container.Env = append(container.Env, corev1.EnvVar{
+			Name: "NODE_NAME",
+			ValueFrom: &corev1.EnvVarSource{
+				FieldRef: &corev1.ObjectFieldSelector{
+					FieldPath:  "spec.nodeName",
+					APIVersion: "v1",
+				},
+			},
+		})
 	}
 
 	pod.ImagePullSecrets = append(pod.ImagePullSecrets, corev1.LocalObjectReference{
