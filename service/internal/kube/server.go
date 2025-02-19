@@ -29,7 +29,7 @@ type Server struct {
 }
 
 func CreateServer(context context.Context, server Server, client *dynamic.DynamicClient) error {
-	resource := client.Resource(ServerGCR).Namespace(server.Metadata.Namespace)
+	resource := client.Resource(ServerGCR)
 	log.Printf("Trying to find in ns %s, with apiVersion %s", server.Metadata.Namespace, crdGroup+"/"+crdVersion)
 	serverStruct := &unstructured.Unstructured{
 		Object: map[string]interface{}{
