@@ -8,7 +8,7 @@ COPY go.mod ./
 RUN go mod download
 COPY . .
 
-RUN CGO_ENABLED=0 GOARCH=amd64 go build -a -o sidecar cmd/main.go
+RUN CGO_ENABLED=0 GOARCH=amd64 go build -a -o service cmd/main.go
 
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
