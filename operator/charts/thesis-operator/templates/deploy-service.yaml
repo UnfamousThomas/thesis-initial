@@ -6,9 +6,9 @@ metadata:
   name: http-controller-service-clusterrole
 rules:
   # Allow all operations on pods in the core API group
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["*"]
+#  - apiGroups: [""]
+#    resources: ["pods"]
+#    verbs: ["*"]
   # Allow all operations on the custom resources under network.unfamousthomas.me/v1alpha1
   - apiGroups: ["network.unfamousthomas.me"]
     resources:
