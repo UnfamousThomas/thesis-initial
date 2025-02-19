@@ -12,10 +12,10 @@ rules:
   # Allow all operations on the custom resources under network.unfamousthomas.me/v1alpha1
   - apiGroups: ["network.unfamousthomas.me"]
     resources:
-      - gameautoscaler
-      - gametype
-      - fleet
-      - server
+      - gameautoscalers
+      - gametypes
+      - fleets
+      - servers
     verbs: ["*"]
 
 ---
