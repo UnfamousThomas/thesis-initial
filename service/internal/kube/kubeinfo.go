@@ -4,9 +4,9 @@ const (
 	crdGroup           = "network.unfamousthomas.me"
 	crdVersion         = "v1alpha1"
 	scalerResourceName = "GameAutoscaler"
-	gameResourceName   = "GameType"
-	fleetResourceName  = "Fleet"
-	serverResourceName = "Server"
+	gameResourceName   = "GameTypes"
+	fleetResourceName  = "Fleets"
+	serverResourceName = "Servers"
 )
 
 type Metadata struct {
