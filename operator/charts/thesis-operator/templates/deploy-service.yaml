@@ -56,7 +56,7 @@ spec:
       labels:
         app: http-controller-service
     spec:
-      serviceAccountName: http-controller-service
+      serviceAccountName: http-controller-service-sa
       imagePullSecrets:
         - name: ghcr-secret
       containers:
