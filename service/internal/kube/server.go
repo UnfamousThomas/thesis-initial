@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	"log"
 	"maps"
 )
 
@@ -29,12 +30,12 @@ type Server struct {
 
 func CreateServer(context context.Context, server Server, client *dynamic.DynamicClient) error {
 	resource := client.Resource(ServerGCR).Namespace(server.Metadata.Namespace)
-
+	log.Printf("Trying to find in ns %s, with apiVersion %s", server.Metadata.Namespace, crdGroup+"/"+crdVersion)
 	serverStruct := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": crdGroup + "/" + crdVersion,
 			"kind":       serverResourceName,
-			"metadata":   server.Metadata,
+			"metadata":   map[string]interface{}{"name": server.Metadata.Name, "namespace": server.Metadata.Namespace},
 			"spec":       server.Spec,
 		},
 	}
