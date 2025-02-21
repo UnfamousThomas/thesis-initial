@@ -3,10 +3,10 @@ package kube
 const (
 	crdGroup           = "network.unfamousthomas.me"
 	crdVersion         = "v1alpha1"
-	scalerResourceName = "GameAutoscaler"
-	gameResourceName   = "GameTypes"
-	fleetResourceName  = "Fleets"
-	serverResourceName = "Servers"
+	scalerResourceName = "gameautoscaler"
+	gameResourceName   = "gametype"
+	fleetResourceName  = "fleet"
+	serverResourceName = "server"
 )
 
 type Metadata struct {
