@@ -1,4 +1,4 @@
-name: Build image and publish
+name: Build sidecar and publish
 
 on:
   workflow_dispatch:
