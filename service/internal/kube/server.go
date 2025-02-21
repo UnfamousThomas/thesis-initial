@@ -29,8 +29,8 @@ type Server struct {
 }
 
 func CreateServer(context context.Context, server Server, client *dynamic.DynamicClient) error {
-	resource := client.Resource(ServerGCR)
-	log.Printf("Trying to find in ns %s, with apiVersion %s", server.Metadata.Namespace, crdGroup+"/"+crdVersion)
+	resource := client.Resource(ServerGCR).Namespace(server.Metadata.Namespace)
+	log.Printf("Trying to find in ns %s, with apiVersion %s, with resource %s\n", server.Metadata.Namespace, crdGroup+"/"+crdVersion, ServerGCR.String())
 	serverStruct := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": crdGroup + "/" + crdVersion,
@@ -39,6 +39,7 @@ func CreateServer(context context.Context, server Server, client *dynamic.Dynami
 			"spec":       server.Spec,
 		},
 	}
+	log.Printf("Attempting to create server %s", server.Metadata.Name)
 	_, err := resource.Create(context, serverStruct, metav1.CreateOptions{})
 	if err != nil {
 		return err
