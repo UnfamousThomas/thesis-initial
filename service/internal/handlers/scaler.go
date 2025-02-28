@@ -5,40 +5,34 @@ import (
 	"encoding/json"
 	"github.com/unfamousthomas/thesis-service/internal/app"
 	"github.com/unfamousthomas/thesis-service/internal/kube"
-
 	"log"
 	"net/http"
 )
 
-type CreateServerRequest struct {
-	Server *kube.Server `json:"server"`
+type CreateScalerRequest struct {
+	Scaler *kube.GameAutoscaler `json:"scaler"`
 }
 
-type DeleteObjectRequest struct {
-	Metadata *kube.Metadata `json:"metadata"`
-	Force    bool           `json:"force"`
-}
-
-// CreateServer is used to create a new server in the cluster
-func CreateServer(a *app.App) func(http.ResponseWriter, *http.Request) {
+// CreateScaler is used to create a new kube.GameAutoscaler in the cluster
+func CreateScaler(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		var request CreateServerRequest
+		var request CreateScalerRequest
 		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			log.Printf("Error decoding request: %v", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if request.Server == nil {
+		if request.Scaler == nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		err, obj := kube.CreateServer(context.WithValue(context.Background(), "kube", "create-server"), *request.Server, a.DynamicClient)
+		err, obj := kube.CreateScaler(context.WithValue(context.Background(), "kube", "create-scaler"), *request.Scaler, a.DynamicClient)
 		if err != nil {
-			log.Printf("Error creating server: %v", err)
+			log.Printf("Error creating scaler: %v", err)
 			e := map[string]string{
-				"message": "Error creating server",
+				"message": "Error creating scaler",
 				"error":   err.Error(),
 			}
 			jsonData, err := json.Marshal(e)
@@ -69,7 +63,8 @@ func CreateServer(a *app.App) func(http.ResponseWriter, *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 }
-func DeleteServer(a *app.App) func(http.ResponseWriter, *http.Request) {
+
+func DeleteScaler(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		var request DeleteObjectRequest
@@ -84,11 +79,11 @@ func DeleteServer(a *app.App) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		err = kube.DeleteServer(context.WithValue(context.Background(), "kube", "delete-server"), *request.Metadata, a.DynamicClient, a.ClientSet, request.Force)
+		err = kube.DeleteScaler(context.WithValue(context.Background(), "kube", "delete-scaler"), *request.Metadata, a.DynamicClient, a.ClientSet)
 		if err != nil {
-			log.Printf("Error deleting server: %v\n", err)
+			log.Printf("Error deleting scaler: %v\n", err)
 			e := map[string]string{
-				"message": "Error creating server",
+				"message": "Error deleting scaler",
 				"error":   err.Error(),
 			}
 			jsonData, err := json.Marshal(e)

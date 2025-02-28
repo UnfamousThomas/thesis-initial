@@ -1,13 +1,17 @@
 package kube
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"maps"
+	"k8s.io/client-go/kubernetes"
+	"net/http"
 )
 
 var ServerGCR = schema.GroupVersionResource{
@@ -44,50 +48,50 @@ func CreateServer(context context.Context, server Server, client *dynamic.Dynami
 	return nil, serverStruct.Object
 }
 
-func DeleteServer(context context.Context, metadata Metadata, client *dynamic.DynamicClient) error {
+func DeleteServer(context context.Context, metadata Metadata, client *dynamic.DynamicClient, clientset *kubernetes.Clientset, force bool) error {
 	resource := client.Resource(ServerGCR).Namespace(metadata.Namespace)
-
 	err := resource.Delete(context, metadata.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
-	return nil
-}
 
-// AddServerLabels adds label to the server object (NOT POD), note that all labels from metadata are copied.
-// Meaning it overwrites.
-func AddServerLabels(context context.Context, metadata Metadata, client *dynamic.DynamicClient) error {
-	resource := client.Resource(ServerGCR).Namespace(metadata.Namespace)
-	unstr, err := resource.Get(context, metadata.Name, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	labels := unstr.GetLabels()
-	maps.Copy(labels, metadata.Labels)
-	unstr.SetLabels(labels)
-
-	_, err = resource.Update(context, unstr, metav1.UpdateOptions{})
-	if err != nil {
-		return err
+	if force {
+		err = sendDeleteAllowed(context, metadata.Name, clientset)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func RemoveServerLabel(context context.Context, metadata Metadata, label string, client *dynamic.DynamicClient) error {
-	resource := client.Resource(ServerGCR).Namespace(metadata.Namespace)
-	unstr, err := resource.Get(context, metadata.Name, metav1.GetOptions{})
+func sendDeleteAllowed(context context.Context, name string, client *kubernetes.Clientset) error {
+	resource := client.CoreV1().Pods(name)
+	pod, err := resource.Get(context, name+"-pod", metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	labels := unstr.GetLabels()
-	delete(labels, label)
+	url := fmt.Sprintf("http://%s:8080/allow_delete", pod.Status.PodIP)
+	payload := map[string]any{
+		"allowed": true,
+	}
 
-	unstr.SetLabels(labels)
-	_, err = resource.Update(context, unstr, metav1.UpdateOptions{})
+	jsonData, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	httpclient := &http.Client{}
+	resp, err := httpclient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 	return nil
 }

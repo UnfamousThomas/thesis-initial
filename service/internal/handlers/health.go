@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/unfamousthomas/thesis-sidecar/internal/app"
+	"github.com/unfamousthomas/thesis-service/internal/app"
 	"net/http"
 )
 

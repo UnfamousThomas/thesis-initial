@@ -1,4 +1,4 @@
-module github.com/unfamousthomas/thesis-sidecar
+module github.com/unfamousthomas/thesis-service
 
 go 1.23.0
 
