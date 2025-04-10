@@ -11,7 +11,7 @@ spec:
     webhook:
       clientConfig:
         service:
-          name: '{{ include "thesis-operator.fullname" . }}-webhook-service'
+          name: '{{ include "crd-chart.operatorFullname" . }}-webhook-service'
           namespace: '{{ .Release.Namespace }}'
           path: /convert
       conversionReviewVersions:
