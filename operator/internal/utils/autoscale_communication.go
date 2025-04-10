@@ -42,7 +42,7 @@ func (w ProductionWebhookRequest) SendScaleWebhookRequest(autoscaler *networkv1a
 		return AutoscaleResponse{}, err
 	}
 
-	req, err := http.NewRequest("GET", url, bytes.NewBuffer(requestBody))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
 	if err != nil {
 		return AutoscaleResponse{}, err
 	}
@@ -57,6 +57,10 @@ func (w ProductionWebhookRequest) SendScaleWebhookRequest(autoscaler *networkv1a
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return AutoscaleResponse{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return AutoscaleResponse{}, fmt.Errorf("invalid request response: %d. Raw response: %s", resp.StatusCode, string(bodyBytes))
 	}
 
 	var response AutoscaleResponse
