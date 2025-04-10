@@ -3,7 +3,7 @@ kind: CustomResourceDefinition
 metadata:
   name: servers.network.unfamousthomas.me
   annotations:
-    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ include "crd-chart.operatorFullname" . }}-serving-cert'
+    cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ include "crd-chart.operatorFullname" . }}-serving-cert"
     controller-gen.kubebuilder.io/version: v0.15.0
 spec:
   conversion:

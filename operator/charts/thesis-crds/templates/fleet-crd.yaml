@@ -4,8 +4,7 @@ metadata:
   name: fleets.network.unfamousthomas.me
   annotations:
     controller-gen.kubebuilder.io/version: v0.15.0
-    cert-manager.io/inject-ca-from: '{{ .Release.Namespace }}/{{ include "crd-chart.operatorFullname" . }}-serving-cert'
-
+    cert-manager.io/inject-ca-from: "{{ .Release.Namespace }}/{{ include "crd-chart.operatorFullname" . }}-serving-cert"
 spec:
   conversion:
     strategy: Webhook
