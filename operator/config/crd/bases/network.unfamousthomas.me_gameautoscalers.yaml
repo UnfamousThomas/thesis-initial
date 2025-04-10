@@ -53,8 +53,6 @@ spec:
                         type: string
                     required:
                     - path
-                    - service
-                    - url
                     type: object
                 required:
                 - type

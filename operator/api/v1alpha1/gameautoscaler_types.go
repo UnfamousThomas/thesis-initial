@@ -53,9 +53,11 @@ type AutoscalePolicy struct {
 }
 
 type WebhookAutoscalerSpec struct {
-	Url     *string `json:"url"`
-	Path    string  `json:"path"`
-	Service Service `json:"service"`
+	// +kubebuilder:validation:Optional
+	Url  *string `json:"url"`
+	Path string  `json:"path"`
+	// +kubebuilder:validation:Optional
+	Service *Service `json:"service"`
 }
 
 type Service struct {
