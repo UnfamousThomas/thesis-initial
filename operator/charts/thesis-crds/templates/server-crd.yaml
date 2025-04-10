@@ -12,7 +12,7 @@ spec:
     webhook:
       clientConfig:
         service:
-          name: '{{ include "thesis-operator.fullname" . }}-webhook-service'
+          name: '{{ include .Values.operator.releaseName . }}-webhook-service'
           namespace: '{{ .Release.Namespace }}'
           path: /convert
       conversionReviewVersions:
