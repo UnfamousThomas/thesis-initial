@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
+	"io"
 	"net/http"
 	"time"
 )
@@ -53,10 +54,15 @@ func (w ProductionWebhookRequest) SendScaleWebhookRequest(autoscaler *networkv1a
 
 	defer resp.Body.Close()
 
-	var response AutoscaleResponse
-	err = json.NewDecoder(resp.Body).Decode(&response)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return AutoscaleResponse{}, err
+	}
+
+	var response AutoscaleResponse
+	err = json.Unmarshal(bodyBytes, &response)
+	if err != nil {
+		return AutoscaleResponse{}, fmt.Errorf("failed to decode response: %w\nRaw response: %s\n", err, string(bodyBytes))
 	}
 	return response, nil
 }
