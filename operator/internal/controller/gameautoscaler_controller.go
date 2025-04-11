@@ -74,7 +74,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	result, err := r.Webhook.SendScaleWebhookRequest(autoscaler, gametype)
 	if err != nil {
 		logger.Error(err, "Failed to send scale webhook")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Minute}, err
 	}
 
 	if autoscaler.Spec.Sync.Type != networkv1alpha1.FixedInterval {
