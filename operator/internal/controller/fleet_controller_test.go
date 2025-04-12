@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -29,6 +28,15 @@ import (
 
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
+
+var basicFleetSpec = networkv1alpha1.FleetSpec{
+	Scaling: networkv1alpha1.FleetScaling{
+		Replicas:          3,
+		PrioritizeAllowed: false,
+		AgePriority:       networkv1alpha1.OldestFirst,
+	},
+	ServerSpec: basicServerSpec,
+}
 
 var _ = Describe("Fleet Controller", func() {
 	Context("When reconciling a resource", func() {
@@ -51,13 +59,7 @@ var _ = Describe("Fleet Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					Spec: networkv1alpha1.FleetSpec{
-						Scaling: networkv1alpha1.FleetScaling{
-							Replicas:          3,
-							PrioritizeAllowed: false,
-							AgePriority:       networkv1alpha1.OldestFirst,
-						},
-					},
+					Spec: basicFleetSpec,
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}

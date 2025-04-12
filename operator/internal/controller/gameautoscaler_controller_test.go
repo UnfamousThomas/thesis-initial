@@ -18,89 +18,340 @@ package controller
 
 import (
 	"context"
-	"github.com/unfamousthomas/thesis-operator/internal/utils"
-
+	"fmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
-type TestWebhook struct{}
+type TestWebhook struct {
+	Scale    bool
+	Replicas int
+	Error    bool
+}
 
-func (t TestWebhook) SendScaleWebhookRequest(autoscaler *networkv1alpha1.GameAutoscaler, gametype *networkv1alpha1.GameType) (utils.AutoscaleResponse, error) {
-	//TODO
-	panic("implement me")
+func (t *TestWebhook) SendScaleWebhookRequest(autoscaler *networkv1alpha1.GameAutoscaler, gametype *networkv1alpha1.GameType) (utils.AutoscaleResponse, error) {
+	if t.Error {
+		return utils.AutoscaleResponse{}, fmt.Errorf("random error with webhook")
+	}
+	return utils.AutoscaleResponse{
+		Scale:           t.Scale,
+		DesiredReplicas: t.Replicas,
+	}, nil
+}
+
+var basicGameautoscaler = networkv1alpha1.GameAutoscalerSpec{
+	GameName: "some-random-game",
+	AutoscalePolicy: networkv1alpha1.AutoscalePolicy{
+		Type: networkv1alpha1.Webhook,
+		WebhookAutoscalerSpec: networkv1alpha1.WebhookAutoscalerSpec{
+			Path: "/scale",
+			Service: &networkv1alpha1.Service{
+				Name:      "some-random-service",
+				Namespace: metav1.NamespaceDefault,
+				Port:      8080,
+			},
+		},
+	},
+	Sync: networkv1alpha1.Sync{
+		Type:          networkv1alpha1.FixedInterval,
+		FixedInterval: 5,
+	},
 }
 
 var _ = Describe("GameAutoscaler Controller", func() {
 
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
+		const namespace = "default"
+		hook := &TestWebhook{
+			Scale:    false,
+			Replicas: 1,
+			Error:    false,
+		}
 
 		ctx := context.Background()
 
-		typeNamespacedName := types.NamespacedName{
+		autoscalerNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default",
+			Namespace: namespace,
 		}
-		gameautoscaler := &networkv1alpha1.GameAutoscaler{}
+		gameTypeNamespacedName := types.NamespacedName{
+			Name:      "some-random-game",
+			Namespace: namespace,
+		}
 
 		BeforeEach(func() {
+			By("creating a new game to match the autoscaler")
+			gametype := &networkv1alpha1.GameType{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: namespace,
+				},
+			}
+			gameautoscaler := &networkv1alpha1.GameAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: namespace,
+				}}
+
+			err := k8sClient.Get(ctx, gameTypeNamespacedName, gametype)
+			if err != nil && errors.IsNotFound(err) {
+				resource := &networkv1alpha1.GameType{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "some-random-game",
+						Namespace: namespace,
+					},
+					Spec: basicGametypeSpec,
+				}
+				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				Eventually(func() error {
+					return k8sClient.Get(ctx, gameTypeNamespacedName, &networkv1alpha1.GameType{})
+				}, time.Second*5, time.Millisecond*100).Should(Succeed())
+
+			}
 			By("creating the custom resource for the Kind GameAutoscaler")
-			err := k8sClient.Get(ctx, typeNamespacedName, gameautoscaler)
+			err = k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &networkv1alpha1.GameAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					Spec: networkv1alpha1.GameAutoscalerSpec{
-						GameName: "some-random-game",
-						AutoscalePolicy: networkv1alpha1.AutoscalePolicy{
-							Type: networkv1alpha1.Webhook,
-							WebhookAutoscalerSpec: networkv1alpha1.WebhookAutoscalerSpec{
-								Path: "/scale",
-								Service: networkv1alpha1.Service{
-									Name:      "some-random-service",
-									Namespace: metav1.NamespaceDefault,
-									Port:      8080,
-								},
-							},
-						},
-					},
+					Spec: basicGameautoscaler,
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
-		})
 
+		})
 		AfterEach(func() {
-			resource := &networkv1alpha1.GameAutoscaler{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+			By("Check if gameautoscaler exists")
+			gameautoscaler := &networkv1alpha1.GameAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: namespace,
+				},
+			}
+			err := k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
+			Expect(err).To(BeNil())
 
-			By("Cleanup the specific resource instance GameAutoscaler")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			By("Cleanup the specific gameautoscaler instance")
+			err = k8sClient.Delete(ctx, gameautoscaler)
+			Expect(err).To(BeNil())
+
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
+				if err != nil && !errors.IsNotFound(err) {
+					return fmt.Errorf("error deleting game autoscaler: %w", err)
+				}
+				return nil
+			}, time.Second*5, time.Millisecond*100).Should(Succeed())
+			By("Check if autoscaler was deleted")
+			err = k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
+			Expect(err).To(Not(BeNil()))
+
+			By("Check if game exists")
+			game := &networkv1alpha1.GameType{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      gameTypeNamespacedName.Name,
+					Namespace: namespace,
+				},
+			}
+
+			err = k8sClient.Get(ctx, gameTypeNamespacedName, game)
+			Expect(err).To(BeNil())
+
+			By("Cleanup the specific game instance")
+			err = k8sClient.Delete(ctx, game)
+			Expect(err).To(BeNil())
+
+			Eventually(func() error {
+				err := k8sClient.Get(ctx, gameTypeNamespacedName, game)
+				if !errors.IsNotFound(err) {
+					return fmt.Errorf("error deleting game: %w", err)
+				}
+				return nil
+			}, time.Second*5, time.Millisecond*100).Should(Succeed())
+
+			By("Check if game was deleted")
+			err = k8sClient.Get(ctx, gameTypeNamespacedName, game)
+			Expect(err).To(Not(BeNil()))
 		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
+
+		It("should successfully reconcile the gameautoscaler", func() {
+			By("create the reconciler for gameautoscaler")
 			controllerReconciler := &GameAutoscalerReconciler{
 				Client:  k8sClient,
 				Scheme:  k8sClient.Scheme(),
-				Webhook: &TestWebhook{},
+				Webhook: hook,
 			}
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
+			By("first reconciling for gameautoscaler")
+			res, err := controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).To(BeNil())
+			Expect(res.RequeueAfter).To(BeEquivalentTo(5 * time.Second))
+
+			By("second reconciling for gameautoscaler")
+			res, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).To(BeNil())
+			Expect(res.RequeueAfter).To(BeEquivalentTo(5 * time.Second))
+
+			By("reconcile not existing autoscaler")
+			res, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{
+				Namespace: namespace,
+				Name:      "some-random-scaler",
+			},
 			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			Expect(err).To(Not(BeNil()))
+			Expect(err).To(Not(Succeed()))
+
+			By("Reconcile with webhook error")
+			hook.Error = true
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).To(Not(BeNil()))
+			hook.Error = false
+		})
+
+		It("Reconcile with scaling", func() {
+			By("Setup reconciler")
+			controllerReconciler := &GameAutoscalerReconciler{
+				Client:  k8sClient,
+				Scheme:  k8sClient.Scheme(),
+				Webhook: hook,
+			}
+
+			By("Setup hook")
+			hook.Scale = true
+			hook.Replicas = 10
+
+			By("Reconcile and check time")
+			res, err := controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).To(BeNil())
+			Expect(res.RequeueAfter).To(BeEquivalentTo(5 * time.Second))
+			By("Check updated game")
+			updatedGameType := networkv1alpha1.GameType{}
+			err = k8sClient.Get(ctx, gameTypeNamespacedName, &updatedGameType)
+			Expect(err).To(BeNil())
+			Expect(updatedGameType.Spec.Scaling.CurrentReplicas).Should(BeEquivalentTo(10))
+		})
+
+		It("Reconcile with invalid types", func() {
+			By("Setup reconciler")
+			controllerReconciler := &GameAutoscalerReconciler{
+				Client:  k8sClient,
+				Scheme:  k8sClient.Scheme(),
+				Webhook: hook,
+			}
+
+			gameautoscaler := &networkv1alpha1.GameAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: namespace,
+				}}
+
+			By("Reconcile with invalid sync type")
+			err := k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
+			Expect(err).To(BeNil())
+
+			gameautoscaler.Spec.Sync.Type = "randomstring"
+			//Logic block to update the autoscaler...
+			err = k8sClient.Update(ctx, gameautoscaler)
+			Expect(err).To(BeNil())
+			Eventually(func() error {
+				autoscaler := networkv1alpha1.GameAutoscaler{}
+				err := k8sClient.Get(ctx, autoscalerNamespacedName, &autoscaler)
+				if err != nil {
+					return err
+				}
+				if autoscaler.Spec.Sync.Type != "randomstring" {
+					return fmt.Errorf("still correct sync")
+				}
+				return nil
+			}, time.Second*5, time.Millisecond*100).Should(Succeed())
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).NotTo(BeNil())
+
+			By("Reconcile with invalid sync type")
+			err = k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
+			Expect(err).To(BeNil())
+
+			gameautoscaler.Spec.Sync.Type = networkv1alpha1.FixedInterval
+			gameautoscaler.Spec.AutoscalePolicy.Type = "randomstring"
+			//Logic block to update the autoscaler...
+			err = k8sClient.Update(ctx, gameautoscaler)
+			Expect(err).To(BeNil())
+			Eventually(func() error {
+				autoscaler := networkv1alpha1.GameAutoscaler{}
+				err := k8sClient.Get(ctx, autoscalerNamespacedName, &autoscaler)
+				if err != nil {
+					return err
+				}
+				if autoscaler.Spec.AutoscalePolicy.Type != "randomstring" {
+					return fmt.Errorf("still correct autoscale")
+				}
+				return nil
+			}, time.Second*5, time.Millisecond*100).Should(Succeed())
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).NotTo(BeNil())
+
+			By("Invalid gametype reconcile")
+			err = k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
+			Expect(err).To(BeNil())
+			gameautoscaler.Spec.AutoscalePolicy.Type = networkv1alpha1.Webhook
+			gameautoscaler.Spec.GameName = "thisdoesnotexist"
+			err = k8sClient.Update(ctx, gameautoscaler)
+			Expect(err).To(BeNil())
+			Eventually(func() error {
+				autoscaler := networkv1alpha1.GameAutoscaler{}
+				err := k8sClient.Get(ctx, autoscalerNamespacedName, &autoscaler)
+				if err != nil {
+					return err
+				}
+				if autoscaler.Spec.GameName != "thisdoesnotexist" {
+					return fmt.Errorf("still correct game")
+				}
+				return nil
+			}, time.Second*5, time.Millisecond*100).Should(Succeed())
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).ToNot(BeNil())
+		})
+
+		It("should fail update", func() {
+			fakeClient := FakeFailClient{
+				client:       k8sClient,
+				FailUpdate:   true,
+				FailCreate:   false,
+				FailDelete:   false,
+				FailGet:      false,
+				FailList:     false,
+				FailPatch:    false,
+				FailGetOnPod: false,
+			}
+			controllerReconciler := &GameAutoscalerReconciler{
+				Client:  fakeClient,
+				Scheme:  fakeClient.Scheme(),
+				Webhook: hook,
+			}
+			hook.Scale = true
+			hook.Replicas = 10
+			hook.Error = false
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: namespace,
+					Name:      resourceName,
+				},
+			})
+			Expect(err).To(Not(BeNil()))
 		})
 	})
 })

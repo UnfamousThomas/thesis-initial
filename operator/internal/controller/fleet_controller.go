@@ -19,16 +19,13 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/go-logr/logr"
+	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
 const FLEET_FINALIZER = "fleets.unfamousthomas.me/finalizer"
@@ -49,48 +46,40 @@ type FleetReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.4/pkg/reconcile
 func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("fleet", req.Name, "namespace", req.Namespace)
 
 	//Fetch the fleet resource from the cluster
 	fleet := &networkv1alpha1.Fleet{}
 	if err := r.Get(ctx, req.NamespacedName, fleet); err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			logger.Error(err, "Failed to get Fleet resource")
-		}
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, err
 	}
 
 	// Handle finalizer addition
 	if fleet.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(fleet, FLEET_FINALIZER) {
-		logger.Info("Adding finalizer to fleet")
 		controllerutil.AddFinalizer(fleet, FLEET_FINALIZER)
 		if err := r.Update(ctx, fleet); err != nil {
-			logger.Error(err, "Failed to add finalizer to fleet")
-			return ctrl.Result{Requeue: true}, err
+			return ctrl.Result{Requeue: true}, fmt.Errorf("failed to add finalizer to fleet: %w", err)
 		}
 		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Handle resource deletion
 	if fleet.DeletionTimestamp != nil || !fleet.GetDeletionTimestamp().IsZero() {
-		logger.Info("Handling deletion of fleet")
-		if err := r.handleDeletion(ctx, fleet, logger); err != nil {
-			logger.Error(err, "Failed to handle fleet deletion")
-			return ctrl.Result{}, err
+		if err := r.handleDeletion(ctx, fleet); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to handle fleet deletion: %w", err)
 		}
 		return ctrl.Result{}, nil // Return after so we do not accidentally scale again
 	}
 
-	servers, err := r.getServers(ctx, fleet, logger)
+	servers, err := r.getServers(ctx, fleet)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, err
 	}
 	fleet.Status.CurrentReplicas = int32(len(servers.Items))
 	if fleet.Spec.Scaling.Replicas != fleet.Status.CurrentReplicas {
-		if err := r.scaleServerCount(ctx, fleet, req.Namespace, logger); err != nil {
+		if err := r.scaleServerCount(ctx, fleet, req.Namespace); err != nil {
 			return ctrl.Result{}, err
 		}
-		servers, err := r.getServers(ctx, fleet, logger)
+		servers, err := r.getServers(ctx, fleet)
 		if err != nil {
 			return ctrl.Result{Requeue: true}, err
 		}
@@ -98,10 +87,8 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	if err := r.Status().Update(ctx, fleet); err != nil {
-		logger.Error(err, "Failed to update Fleet resource")
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{Requeue: true}, fmt.Errorf("failed to update Fleet status resource: %w", err)
 	}
-	logger.Info("Reconciliation finished")
 	return ctrl.Result{Requeue: true}, err
 }
 
@@ -114,11 +101,10 @@ func (r *FleetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1alpha1.Fleet, namespace string, logger logr.Logger) error {
+func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1alpha1.Fleet, namespace string) error {
 	if fleet.Status.CurrentReplicas < fleet.Spec.Scaling.Replicas {
 		//Scale up
 		serversNeeded := fleet.Spec.Scaling.Replicas - fleet.Status.CurrentReplicas
-		logger.Info(fmt.Sprintf("Scaling servers needed: %d", serversNeeded))
 		for range serversNeeded {
 			server := utils.CreateServerForFleet(*fleet, namespace)
 			err := r.Create(ctx, server)
@@ -129,13 +115,11 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 	}
 	//Scale down
 	if fleet.Status.CurrentReplicas > fleet.Spec.Scaling.Replicas {
-		serversToDelete := fleet.Status.CurrentReplicas - fleet.Spec.Scaling.Replicas
-		logger.Info(fmt.Sprintf("Deleting servers needed: %d", serversToDelete))
-		servers, err := r.getServers(ctx, fleet, logger)
+		servers, err := r.getServers(ctx, fleet)
 		if err != nil {
 			return err
 		}
-		server, err := utils.FindDeleteServer(ctx, fleet, servers, r.Client, logger)
+		server, err := utils.FindDeleteServer(ctx, fleet, servers, r.Client)
 		if err != nil {
 			return err
 		}
@@ -146,7 +130,7 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 	return nil
 }
 
-func (r *FleetReconciler) getServers(ctx context.Context, fleet *networkv1alpha1.Fleet, logger logr.Logger) (*networkv1alpha1.ServerList, error) {
+func (r *FleetReconciler) getServers(ctx context.Context, fleet *networkv1alpha1.Fleet) (*networkv1alpha1.ServerList, error) {
 	serverList := &networkv1alpha1.ServerList{}
 	labelSelector := client.MatchingLabels{"fleet": fleet.Name}
 	if err := r.List(ctx, serverList, client.InNamespace(fleet.Namespace), labelSelector); err != nil {
@@ -155,8 +139,8 @@ func (r *FleetReconciler) getServers(ctx context.Context, fleet *networkv1alpha1
 	return serverList, nil
 }
 
-func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1alpha1.Fleet, logger logr.Logger) error {
-	servers, err := r.getServers(ctx, fleet, logger)
+func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1alpha1.Fleet) error {
+	servers, err := r.getServers(ctx, fleet)
 	if err != nil {
 		return err
 	}
@@ -166,7 +150,7 @@ func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1al
 		}
 	}
 
-	servers, err = r.getServers(ctx, fleet, logger)
+	servers, err = r.getServers(ctx, fleet)
 	if err != nil {
 		return err
 	}

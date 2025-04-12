@@ -46,6 +46,10 @@ resources:
   kind: GameType
   path: github.com/unfamousthomas/thesis-operator/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true
@@ -55,4 +59,8 @@ resources:
   kind: GameAutoscaler
   path: github.com/unfamousthomas/thesis-operator/api/v1alpha1
   version: v1alpha1
+  webhooks:
+    defaulting: true
+    validation: true
+    webhookVersion: v1
 version: "3"

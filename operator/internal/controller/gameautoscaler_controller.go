@@ -18,7 +18,7 @@ package controller
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/types"
 	"time"
@@ -62,24 +62,20 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		Namespace: autoscaler.Namespace,
 	}
 	if err := r.Get(ctx, namespacedGametype, gametype); err != nil {
-		logger.Error(err, "Failed to get gametype resource")
 		return ctrl.Result{Requeue: true}, err
 	}
 
 	if autoscaler.Spec.AutoscalePolicy.Type != networkv1alpha1.Webhook {
-		logger.Error(errors.New("unable to handle strategies besides webhook"), "please implement new types")
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, fmt.Errorf("%s is not a valid policy type", autoscaler.Spec.AutoscalePolicy.Type)
 	}
 
 	result, err := r.Webhook.SendScaleWebhookRequest(autoscaler, gametype)
 	if err != nil {
-		logger.Error(err, "Failed to send scale webhook")
-		return ctrl.Result{RequeueAfter: time.Minute}, err
+		return ctrl.Result{RequeueAfter: time.Minute}, fmt.Errorf("failed to send scale webhook request: %w", err)
 	}
 
 	if autoscaler.Spec.Sync.Type != networkv1alpha1.FixedInterval {
-		logger.Error(errors.New("unable to handle syncs besides fixed interval"), "please implement new types")
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, fmt.Errorf("%s is not a valid sync type, currently only fixed interval is supported", autoscaler.Spec.Sync.Type)
 	}
 
 	secondsBetween := time.Second * time.Duration(autoscaler.Spec.Sync.FixedInterval)
@@ -93,8 +89,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	gametype.Spec.Scaling.CurrentReplicas = result.DesiredReplicas
 
 	if err := r.Client.Update(ctx, gametype); err != nil {
-		logger.Error(err, "failed to update gametype with new replica count")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to update gametype with new replica count: %w", err)
 	}
 
 	return ctrl.Result{

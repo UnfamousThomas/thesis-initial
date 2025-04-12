@@ -19,7 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
-	"github.com/go-logr/logr"
+	"fmt"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -31,12 +31,10 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
 const SERVER_FINALIZER = "servers.unfamousthomas.me/finalizer"
@@ -62,65 +60,57 @@ type ServerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.4/pkg/reconcile
 func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).WithValues("server", req.Name, "namespace", req.Namespace)
-
 	// Fetch the Server resource
 	server := &networkv1alpha1.Server{}
 	if err := r.Get(ctx, req.NamespacedName, server); err != nil {
-		if client.IgnoreNotFound(err) != nil {
-			logger.Error(err, "Failed to get Server resource")
+		if client.IgnoreNotFound(err) != nil { //If some other error
+			return ctrl.Result{}, fmt.Errorf("failed to get Server: %w", err)
 		}
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		return ctrl.Result{}, nil
 	}
 
 	// Handle finalizer addition
 	if server.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(server, SERVER_FINALIZER) {
-		logger.Info("Adding finalizer to Server")
 		controllerutil.AddFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
-			logger.Error(err, "Failed to add finalizer")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to update server for finalizer: %s", err)
 		}
 		return ctrl.Result{}, nil
 	}
 
 	// Handle resource deletion
 	if server.DeletionTimestamp != nil || !server.GetDeletionTimestamp().IsZero() {
-		logger.Info("Handling deletion of Server")
-		if err := r.handleDeletion(ctx, server, logger); err != nil { //todo
-			logger.Error(err, "Failed to handle Server deletion")
-			return ctrl.Result{Requeue: true}, err
+		if err := r.handleDeletion(ctx, server); err != nil { //todo
+			return ctrl.Result{Requeue: true}, fmt.Errorf("failed to handle server deletion: %s", err)
 		}
-		logger.Info("Successfully finalized Server, removing finalizer")
 		controllerutil.RemoveFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
-			logger.Error(err, "Failed to remove finalizer")
-			return ctrl.Result{}, err
+			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 		}
 		return ctrl.Result{}, nil // Return after finalizer removal
 	}
 
 	// Ensure Pod exists
-	podExists, err := r.ensurePodExists(ctx, server, logger)
+	podExists, err := r.ensurePodExists(ctx, server)
 	if err != nil {
-		logger.Error(err, "Failed to ensure Pod exists for Server")
-		return ctrl.Result{}, err
+		if err := r.Update(ctx, server); err != nil {
+			return ctrl.Result{}, fmt.Errorf("failed to update server: %w", err)
+		}
+		return ctrl.Result{}, fmt.Errorf("failed to ensure Pod exists for Server: %w", err)
 	}
 	if !podExists {
 		// If a Pod was created, exit early to requeue the reconciliation
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	update, err := r.ensurePodFinalizer(ctx, server, logger)
+	update, err := r.ensurePodFinalizer(ctx, server)
 	if err != nil || update {
 		return ctrl.Result{}, err
 	}
 
 	if err := r.Status().Update(ctx, server); err != nil {
-		logger.Error(err, "Failed to update Server resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, fmt.Errorf("failed to update Server resource: %w", err)
 	}
-	logger.Info("Reconciliation finished")
 	return ctrl.Result{}, nil
 }
 
@@ -133,14 +123,13 @@ func (r *ServerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv1alpha1.Server, logger logr.Logger) (bool, error) {
+func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv1alpha1.Server) (bool, error) {
 	pod := &corev1.Pod{}
 	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
 	err := r.Get(ctx, namespacedName, pod)
 
 	if client.IgnoreNotFound(err) != nil {
-		logger.Error(err, "Failed to get Pod resource")
-		return false, err
+		return false, fmt.Errorf("failed to get Pod resource: %w", err)
 	}
 
 	if err != nil { // Pod does not exist
@@ -168,7 +157,7 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 	return true, nil
 }
 
-func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1alpha1.Server, logger logr.Logger) error {
+func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1alpha1.Server) error {
 	pod := &corev1.Pod{}
 	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
 	if err := r.Get(ctx, namespacedName, pod); err != nil {
@@ -176,8 +165,7 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	}
 	allowed, err := r.DeletionAllowed.IsDeletionAllowed(server, pod)
 	if err != nil {
-		logger.Error(err, "Failed to check if deletion allowed for Server")
-		return err
+		return fmt.Errorf("failed to check for deletion for server: %s", err)
 	}
 	if !allowed {
 		return errors.New("server deletion not allowed")
@@ -209,7 +197,7 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	return nil
 }
 
-func (r *ServerReconciler) ensurePodFinalizer(ctx context.Context, server *networkv1alpha1.Server, logger logr.Logger) (bool, error) {
+func (r *ServerReconciler) ensurePodFinalizer(ctx context.Context, server *networkv1alpha1.Server) (bool, error) {
 	pod := &corev1.Pod{}
 	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
 	if err := r.Get(ctx, namespacedName, pod); err != nil {
@@ -220,8 +208,7 @@ func (r *ServerReconciler) ensurePodFinalizer(ctx context.Context, server *netwo
 	}
 	controllerutil.AddFinalizer(pod, SERVER_FINALIZER)
 	if err := r.Update(ctx, pod); err != nil {
-		logger.Error(err, "Failed to add finalizer to pod")
-		return false, err
+		return false, fmt.Errorf("failed to add finalizer to pod: %s", err)
 	}
 	return true, nil
 }

@@ -21,16 +21,31 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
+
+var basicServerSpec = networkv1alpha1.ServerSpec{
+	Pod: corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:  "nginx",
+				Image: "nginx:1.7.9",
+			},
+		},
+	},
+	AllowForceDelete: false,
+	TimeOut: &metav1.Duration{
+		Duration: 5 * time.Minute,
+	},
+}
 
 type TestChecker struct {
 	deleteAllowed map[string]bool
@@ -54,7 +69,6 @@ var _ = Describe("ServerReconciler", func() {
 
 		var (
 			ctx            context.Context
-			reconciler     *ServerReconciler
 			namespacedName types.NamespacedName
 		)
 
@@ -65,28 +79,13 @@ var _ = Describe("ServerReconciler", func() {
 				Namespace: ServerNamespace,
 			}
 
-			reconciler = &ServerReconciler{
-				Client:          k8sClient,
-				Scheme:          k8sClient.Scheme(),
-				DeletionAllowed: checker,
-			}
-
 			By("Creating a Server resource")
 			server := &networkv1alpha1.Server{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      ServerName,
 					Namespace: ServerNamespace,
 				},
-				Spec: networkv1alpha1.ServerSpec{
-					Pod: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Name:  "nginx-test",
-								Image: "nginx:latest",
-							},
-						},
-					},
-				},
+				Spec: basicServerSpec,
 			}
 			//Do not allow deletions
 			checker.deleteAllowed[server.Name] = false
@@ -96,7 +95,17 @@ var _ = Describe("ServerReconciler", func() {
 
 		AfterEach(func() {
 			By("Deleting the Server resource if it exists")
-			server := &networkv1alpha1.Server{}
+			server := &networkv1alpha1.Server{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      ServerName,
+					Namespace: ServerNamespace,
+				},
+			}
+			reconciler := &ServerReconciler{
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				DeletionAllowed: checker,
+			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).To(BeNil())
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -121,6 +130,11 @@ var _ = Describe("ServerReconciler", func() {
 		})
 
 		It("should add a finalizer if not present", func() {
+			reconciler := &ServerReconciler{
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				DeletionAllowed: checker,
+			}
 			By("Reconciling the resource")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).NotTo(HaveOccurred())
@@ -134,6 +148,11 @@ var _ = Describe("ServerReconciler", func() {
 		})
 
 		It("should create a Pod for the Server", func() {
+			reconciler := &ServerReconciler{
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				DeletionAllowed: checker,
+			}
 			By("Reconciling the resource")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).NotTo(HaveOccurred())
@@ -148,6 +167,11 @@ var _ = Describe("ServerReconciler", func() {
 		})
 
 		It("should handle deletion of the Server and remove the Pod", func() {
+			reconciler := &ServerReconciler{
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				DeletionAllowed: checker,
+			}
 			By("Deleting the Server resource")
 			server := &networkv1alpha1.Server{}
 			Expect(k8sClient.Get(ctx, namespacedName, server)).To(Succeed())
@@ -168,6 +192,71 @@ var _ = Describe("ServerReconciler", func() {
 			By("Validating the finalizer is removed")
 			err = k8sClient.Get(ctx, namespacedName, server)
 			Expect(errors.IsNotFound(err)).To(BeTrue())
+		})
+
+		It("Should return error on get fail", func() {
+			fakeClient := FakeFailClient{
+				client:     k8sClient,
+				FailUpdate: false,
+				FailCreate: false,
+				FailDelete: false,
+				FailGet:    true,
+				FailList:   false,
+				FailPatch:  false,
+			}
+
+			reconciler := &ServerReconciler{
+				Client:          fakeClient,
+				Scheme:          k8sClient.Scheme(),
+				DeletionAllowed: checker,
+			}
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).ToNot(BeNil())
+
+		})
+
+		It("Should return error on update fail", func() {
+			By("Basic update fail")
+			fakeClient := FakeFailClient{
+				client:       k8sClient,
+				FailUpdate:   true,
+				FailCreate:   false,
+				FailDelete:   false,
+				FailGet:      false,
+				FailList:     false,
+				FailPatch:    false,
+				FailGetOnPod: false,
+			}
+
+			reconciler := &ServerReconciler{
+				Client:          fakeClient,
+				Scheme:          k8sClient.Scheme(),
+				DeletionAllowed: checker,
+			}
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).ToNot(BeNil())
+
+			By("Second update fail")
+			fakeClient.FailUpdate = false
+			reconciler.Client = fakeClient
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).To(BeNil())
+			fakeClient.FailUpdate = true
+			reconciler.Client = fakeClient
+
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).To(BeNil())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).ToNot(BeNil())
+
+			fakeClient.FailUpdate = false
+			fakeClient.FailGetOnPod = true
+			reconciler.Client = fakeClient
+
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).ToNot(BeNil())
 		})
 
 	})

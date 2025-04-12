@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,17 +29,29 @@ import (
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
+var basicGametypeSpec = networkv1alpha1.GameTypeSpec{
+	Scaling: networkv1alpha1.TypeScaling{
+		CurrentReplicas: 2,
+	},
+	FleetSpec: basicFleetSpec,
+}
 var _ = Describe("GameType Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
+		const namespace = "default"
 
 		ctx := context.Background()
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: namespace,
 		}
-		gametype := &networkv1alpha1.GameType{}
+		gametype := &networkv1alpha1.GameType{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      resourceName,
+				Namespace: namespace,
+			},
+		}
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind GameType")
@@ -49,17 +60,21 @@ var _ = Describe("GameType Controller", func() {
 				resource := &networkv1alpha1.GameType{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
-						Namespace: "default",
+						Namespace: namespace,
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: basicGametypeSpec,
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &networkv1alpha1.GameType{}
+			resource := &networkv1alpha1.GameType{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: namespace,
+				},
+			}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 

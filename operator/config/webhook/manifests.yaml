@@ -30,6 +30,46 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /mutate-network-unfamousthomas-me-v1alpha1-gameautoscaler
+  failurePolicy: Fail
+  name: mgameautoscaler.kb.io
+  rules:
+  - apiGroups:
+    - network.unfamousthomas.me
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gameautoscalers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /mutate-network-unfamousthomas-me-v1alpha1-gametype
+  failurePolicy: Fail
+  name: mgametype.kb.io
+  rules:
+  - apiGroups:
+    - network.unfamousthomas.me
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gametypes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /mutate-network-unfamousthomas-me-v1alpha1-server
   failurePolicy: Fail
   name: mserver.kb.io
@@ -69,6 +109,46 @@ webhooks:
     - UPDATE
     resources:
     - fleets
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-network-unfamousthomas-me-v1alpha1-gameautoscaler
+  failurePolicy: Fail
+  name: vgameautoscaler.kb.io
+  rules:
+  - apiGroups:
+    - network.unfamousthomas.me
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gameautoscalers
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-network-unfamousthomas-me-v1alpha1-gametype
+  failurePolicy: Fail
+  name: vgametype.kb.io
+  rules:
+  - apiGroups:
+    - network.unfamousthomas.me
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gametypes
   sideEffects: None
 - admissionReviewVersions:
   - v1
