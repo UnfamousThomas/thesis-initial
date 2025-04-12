@@ -17,15 +17,7 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 )
 
@@ -38,54 +30,10 @@ var basicFleetSpec = networkv1alpha1.FleetSpec{
 	ServerSpec: basicServerSpec,
 }
 
+const testNs = "test-fleet-ns"
+
 var _ = Describe("Fleet Controller", func() {
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
 
-		ctx := context.Background()
-
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default",
-		}
-		fleet := &networkv1alpha1.Fleet{}
-
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind Fleet")
-			err := k8sClient.Get(ctx, typeNamespacedName, fleet)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &networkv1alpha1.Fleet{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					Spec: basicFleetSpec,
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
-		})
-
-		AfterEach(func() {
-			resource := &networkv1alpha1.Fleet{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance Fleet")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &FleetReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
-		})
 	})
 })

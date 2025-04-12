@@ -18,8 +18,10 @@ package controller
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -67,6 +69,9 @@ var _ = BeforeSuite(func() {
 	}
 
 	var err error
+	//change to TRUE for more logs
+	Expect(os.Setenv("KUBEBUILDER_ATTACH_CONTROL_PLANE_OUTPUT", "false")).To(Succeed())
+
 	// cfg is defined in this file globally.
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
@@ -88,3 +93,20 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+func firstFolder(path string) string {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		panic(err)
+	}
+
+	parts := strings.Split(filepath.Clean(absPath), string(filepath.Separator))
+
+	for _, part := range parts {
+		if part != "" {
+			return part
+
+		}
+	}
+	return ""
+}

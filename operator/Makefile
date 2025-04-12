@@ -334,3 +334,22 @@ $(HELMIFY): $(LOCALBIN)
 helm: manifests kustomize helmify
 	$(KUSTOMIZE) build config/default | $(HELMIFY) charts/thesis-operator
 
+##@ Kind
+
+KIND ?= $(LOCALBIN)/kind
+KIND_VERSION ?= v0.22.0
+
+.PHONY: kind-install
+kind-install: $(KIND) ## Install kind CLI locally if necessary.
+$(KIND): $(LOCALBIN)
+	@[ -f "$(KIND)" ] || { \
+		echo "Installing kind $(KIND_VERSION)" ;\
+		OS=$$(uname | tr '[:upper:]' '[:lower:]') ;\
+		ARCH=$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') ;\
+		curl -Lo $(KIND) https://kind.sigs.k8s.io/dl/$(KIND_VERSION)/kind-$${OS}-$${ARCH} ;\
+		chmod +x $(KIND) ;\
+	}
+
+.PHONY: kind-create-cluster
+kind-create-cluster: kind-install ## Create a kind cluster.
+	$(KIND) create cluster
