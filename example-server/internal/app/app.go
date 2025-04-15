@@ -9,13 +9,6 @@ import (
 type App struct {
 	Mux    *http.ServeMux
 	Logger *slog.Logger
-	State  *ServerState
-}
-
-type ServerState struct {
-	ServerRunning bool
-	StopRequested bool
-	StopAllowed   bool
 }
 
 func CreateApp() *App {
@@ -25,10 +18,5 @@ func CreateApp() *App {
 	return &App{
 		Mux:    http.NewServeMux(),
 		Logger: logger,
-		State: &ServerState{
-			ServerRunning: false,
-			StopRequested: false,
-			StopAllowed:   false,
-		},
 	}
 }

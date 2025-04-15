@@ -18,11 +18,22 @@ package e2e
 
 import (
 	"fmt"
+	"github.com/unfamousthomas/thesis-operator/test/utils"
+	"os/exec"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
+
+var _ = BeforeSuite(func() {
+	By("resetting the Kind cluster")
+	cmd := exec.Command("kind", "delete", "cluster", "--name", "kind")
+	_, _ = utils.Run(cmd)
+	cmd = exec.Command("kind", "create", "cluster", "--name", "kind")
+	_, err := utils.Run(cmd)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+})
 
 // Run e2e tests using the Ginkgo runner.
 func TestE2E(t *testing.T) {

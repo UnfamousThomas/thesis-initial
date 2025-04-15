@@ -2,15 +2,14 @@ package routes
 
 import (
 	"github.com/UnfamousThomas/thesis-example-server/internal/app"
-	"github.com/UnfamousThomas/thesis-example-server/internal/handlers"
 	"log"
 	"net/http"
 )
 
 func SetupRoutes(a *app.App) {
 
-	a.Mux.HandleFunc("POST /server", handlers.ServerNewStateRequest(a))
-	err := http.ListenAndServe(":8080", a.Mux)
+	log.Printf("Starting listening on port %d", 8081)
+	err := http.ListenAndServe(":8081", a.Mux) //8081 to avoid issues related to the sidecar port conflicts
 	if err != nil {
 		log.Fatalf("Error starting server: %v", err)
 	}

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,15 +15,21 @@ func addContainer(spec *corev1.PodSpec, container corev1.Container) *corev1.PodS
 
 func getPodSpec(server *networkv1alpha1.Server) *corev1.PodSpec {
 	spec := server.Spec
+	sidecarImage := os.Getenv("SIDECAR_IMAGE")
+	if sidecarImage == "" {
+		fmt.Println("SIDECAR_IMAGE env var not set, defaulting.")
+		sidecarImage = "ghcr.io/unfamousthomas/sidecar:latest"
+	}
 	pod := addContainer(&spec.Pod, corev1.Container{
 		Name:  "loputoo-sidecar",
-		Image: "ghcr.io/unfamousthomas/sidecar:latest",
+		Image: sidecarImage,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "http",
 				ContainerPort: 8080,
 			},
 		},
+		ImagePullPolicy: corev1.PullIfNotPresent,
 	})
 	for i := range pod.Containers {
 		container := &pod.Containers[i]
