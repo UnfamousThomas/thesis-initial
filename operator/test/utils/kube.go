@@ -1,32 +1,13 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
+	"time"
 )
-
-func CreateServerManifest(name string, namespace string, image string) string {
-	manifest := fmt.Sprintf(`
-apiVersion: network.unfamousthomas.me/v1alpha1
-kind: Server
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  timeout: 5m
-  allowForceDelete: false
-  pod:
-    containers:
-      - name: gameserver
-        image: %s
-        ports:
-          - containerPort: 8081
-            protocol: TCP
-`, name, namespace, image)
-
-	return manifest
-}
 
 func GetPodIP(podName, namespace string) (string, error) {
 	cmd := exec.Command("kubectl", "get", "pod", podName, "-n", namespace, "-o", "jsonpath={.status.podIP}")
@@ -82,11 +63,16 @@ spec:
 	// JSON payload for the request
 	payload := `{"allowed":true}`
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	// Execute the curl command from inside the pod with the JSON payload
-	curlCmd := exec.Command("kubectl", "exec", "-n", namespace, "curl-pod", "--",
+	curlCmd := exec.CommandContext(ctx, "kubectl", "exec", "-n", namespace, "curl-pod", "--",
 		"curl", "-X", "POST",
 		"-H", "Content-Type: application/json",
 		"-d", payload,
+		"--connect-timeout", "10", // 10 seconds connection timeout
+		"--max-time", "20", // 20 seconds maximum time for operation
 		fmt.Sprintf("http://%s:%d/allow_delete", ip, 8080))
 	_, err = Run(curlCmd)
 
@@ -95,4 +81,14 @@ spec:
 	_, _ = Run(deleteCmd) // Ignore errors during cleanup
 
 	return err
+}
+
+func PodExists(podName, namespace string) (bool, error) {
+	cmd := exec.Command("kubectl", "get", "pod", podName, "-n", namespace, "--ignore-not-found")
+	output, err := Run(cmd)
+	if err != nil {
+		return false, fmt.Errorf("error checking pod existence: %w", err)
+	}
+
+	return strings.TrimSpace(string(output)) != "", nil
 }

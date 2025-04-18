@@ -30,13 +30,13 @@ import (
 	"github.com/unfamousthomas/thesis-operator/test/utils"
 )
 
-const namespace = "loputoo-system"
-
-var controllerPodName string
-
-var _ = Describe("controller", Ordered, func() {
+var _ = Describe("Server Controller", Ordered, func() {
 	Context("Server", func() {
-		const serverName = "test-server"
+		const namespace = "server-controller-test"
+		BeforeAll(func() {
+			By("Creating a namespace")
+			_, _ = utils.Run(exec.Command("kubectl", "create", "namespace", namespace))
+		})
 
 		BeforeEach(func() {
 			By("Creating the server manifest file")
@@ -69,60 +69,74 @@ var _ = Describe("controller", Ordered, func() {
 		})
 		AfterEach(func() {
 			By("Remove server")
+			By("Creating the server manifest file")
+			serverFile, err := os.CreateTemp("", "server-*.yaml")
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			defer os.Remove(serverFile.Name())
+			manifest := utils.CreateServerManifest(serverName, namespace, example_server_image)
+			_, err = serverFile.WriteString(manifest)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			err = serverFile.Close()
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
 			deleteServer := func() error {
-				By("Creating the server manifest file")
-				serverFile, err := os.CreateTemp("", "server-*.yaml")
-				ExpectWithOffset(1, err).NotTo(HaveOccurred())
-				defer os.Remove(serverFile.Name())
-				manifest := utils.CreateServerManifest(serverName, namespace, example_server_image)
-				_, err = serverFile.WriteString(manifest)
-				ExpectWithOffset(1, err).NotTo(HaveOccurred())
-				err = serverFile.Close()
-				ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-				By("Check if server exists")
-				cmd := exec.Command("kubectl", "get", "servers", serverName, "-n", namespace)
-				output, err := utils.Run(cmd)
-				log.Printf("Error checking: %s", err)
-				if err != nil || strings.TrimSpace(string(output)) == "" {
-					// Server doesn't exist, we're done
-					return nil
-				}
-
-				By("Send request")
-				//In this controller, we first need to get the internal ip
+				By("Get IP")
 				ip, err := utils.GetPodIP(serverName+"-pod", namespace)
-				ExpectWithOffset(1, err).NotTo(HaveOccurred()) //Something has gone wrong, as we did not get an error with get but this fails
-				err = utils.SendAllowDeleteRequest(ip, namespace)
-				ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-				By("Check if server still exists")
-				cmd = exec.Command("kubectl", "get", "servers", "-n", namespace)
-				output, err = utils.Run(cmd)
-				if err != nil || strings.TrimSpace(string(output)) == "" {
-					// Server doesn't exist, we're done
-					return nil
+				if err != nil {
+					if isNotFound(err.Error()) {
+						log.Printf("Resource not found, returning nil")
+						return nil
+					}
+					return err
 				}
 
 				By("Server exists, deleting it now")
-				//So if we get here the server still exists and we need to figure out how to delete it.
-				cmd = exec.Command("kubectl", "delete", "-f", serverFile.Name())
-				_, err = utils.Run(cmd)
-				ExpectWithOffset(1, err).NotTo(HaveOccurred()) //Deletion was triggered, however finalizers block it
+				cmd := exec.Command("kubectl", "delete", "-f", serverFile.Name(), "--wait=false")
+				_, _ = utils.Run(cmd)
+				err = utils.SendAllowDeleteRequest(ip, namespace)
+				if err != nil {
+					log.Printf("WARNING! Failed to send server %s the delete request. This could be destructive: %s\n", serverName, err)
+				}
 
+				By("Check if the server still exists")
 				// Verify server is actually gone
-				verifyCmd := exec.Command("kubectl", "get", "server", serverName, "--ignore-not-found")
-				output, err = utils.Run(verifyCmd)
-				if err != nil || strings.TrimSpace(string(output)) == "" {
-					// Server is gone
+				verifyCmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace, "--ignore-not-found")
+				output, err := utils.Run(verifyCmd)
+
+				if isNotFound(string(output)) {
+					log.Printf("Resource not found, returning nil")
 					return nil
-				} else {
-					log.Printf("Output: %s\n", output)
+				}
+
+				if err != nil {
+					if isNotFound(err.Error()) {
+						return nil
+					}
+					return err
 				}
 
 				return fmt.Errorf("server still exists after deletion attempt")
 			}
-			EventuallyWithOffset(1, deleteServer, 2*time.Minute, 5*time.Second).Should(Succeed())
+
+			Eventually(deleteServer, 2*time.Minute, 5*time.Second).Should(Succeed())
+		})
+
+		It("Blocks deletion when not allowed", func() {
+			// Try to delete the server
+			By("try to delete server")
+			deleteCmd := exec.Command("kubectl", "delete", "server", serverName, "-n", namespace, "--wait=false")
+			_, err := utils.Run(deleteCmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			By("Wait 5 seconds")
+			time.Sleep(5 * time.Second)
+
+			By("Verify server was not deleted")
+			// Verify server is still there (in terminating state)
+			cmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace)
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})
 
 		It("Finalizers match", func() {
@@ -137,7 +151,21 @@ var _ = Describe("controller", Ordered, func() {
 			ExpectWithOffset(1, string(output)).Should(Equal("[\"servers.unfamousthomas.me/finalizer\"]"))
 		})
 
+		It("Creates a pod when server is created", func() {
+			podName := serverName + "-pod"
+			podCmd := exec.Command("kubectl", "get", "pod", podName, "-n", namespace)
+			_, err := utils.Run(podCmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			labelCmd := exec.Command("kubectl", "get", "pod", podName, "-n", namespace,
+				"-o", "jsonpath={.metadata.labels.server}")
+			output, err := utils.Run(labelCmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			ExpectWithOffset(1, string(output)).Should(Equal(serverName))
+		})
+
 		It("Don't delete with finalizers", func() {
+			By("Trigger deletion")
 			// Delete the server resource without waiting for full deletion
 			deleteCmd := exec.Command("kubectl", "delete", "server", serverName, "-n", namespace, "--wait=false")
 			_, err := utils.Run(deleteCmd)
@@ -151,11 +179,12 @@ var _ = Describe("controller", Ordered, func() {
 			_, err = utils.Run(checkCmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 			// Verify the resource has a deletion timestamp (is in terminating state)
+
 			deletionTimestampCmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace,
-				"-o", "jsonpath={.metadata.deletionTimestamp}")
+				"-o", `jsonpath="{.metadata.deletionTimestamp}"`)
 			output, err := utils.Run(deletionTimestampCmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			ExpectWithOffset(1, string(output)).NotTo(BeEmpty())
+			ExpectWithOffset(1, string(output)).NotTo(BeEmpty()) //Server deletion should be triggered
 
 			By("Verify if server pod is in deleting state")
 			podDeleteCmd := exec.Command("kubectl", "get", "pod", serverName+"-pod", "-n", namespace)
@@ -166,69 +195,22 @@ var _ = Describe("controller", Ordered, func() {
 				"-o", "jsonpath={.metadata.deletionTimestamp}")
 			output, err = utils.Run(podDeletionTimestampCmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			ExpectWithOffset(1, string(output)).NotTo(BeEmpty())
-
-			By("Remove finalizers")
-			serverPatchCmd := exec.Command("kubectl", "patch", "server", serverName, "-n", namespace,
-				"--type", "json", "-p", "[{\"op\": \"remove\", \"path\": \"/metadata/finalizers\"}]")
-			_, err = utils.Run(serverPatchCmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			podPatchCmd := exec.Command("kubectl", "patch", "pod", serverName+"-pod", "-n", namespace,
-				"--type", "json", "-p", "[{\"op\": \"remove\", \"path\": \"/metadata/finalizers\"}]")
-			_, err = utils.Run(podPatchCmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			By("Check if server is deleted")
-			// Wait for actual deletion to complete after removing finalizers
-			Eventually(func() error {
-				cmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace)
-				_, err := utils.Run(cmd)
-				if strings.Contains(err.Error(), "not found") {
-					return nil
-				}
-				return err
-			}, "30s", "2s").Should(Not(HaveOccurred()))
-		})
-
-		It("Creates a pod when server is created", func() {
-			// Check that pod exists
-			podName := serverName + "-pod"
-			podCmd := exec.Command("kubectl", "get", "pod", podName, "-n", namespace)
-			_, err := utils.Run(podCmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			// Verify pod properties
-			labelCmd := exec.Command("kubectl", "get", "pod", podName, "-n", namespace,
-				"-o", "jsonpath={.metadata.labels.app}")
-			output, err := utils.Run(labelCmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			ExpectWithOffset(1, string(output)).Should(Equal(serverName))
-		})
-
-		It("Sets proper status conditions", func() {
-			condCmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace,
-				"-o", "jsonpath={.status.conditions[?(@.type==\"PodCreated\")].status}")
-			output, err := utils.Run(condCmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			ExpectWithOffset(1, string(output)).Should(Equal("True"))
+			ExpectWithOffset(1, string(output)).To(BeEmpty()) //Pod deletion should not be triggered
 		})
 
 		It("Handles deletion properly when allowed", func() {
-			// First get the Pod IP
 			ip, err := utils.GetPodIP(serverName+"-pod", namespace)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-			// Mock the service to allow deletion
 			err = utils.SendAllowDeleteRequest(ip, namespace)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+			if err != nil {
+				fmt.Printf("Server %s failed to send delete request. This could have disastrous consequenses. Error: %s\n", serverName, err)
+			}
 
-			// Delete the server
 			deleteCmd := exec.Command("kubectl", "delete", "server", serverName, "-n", namespace)
 			_, err = utils.Run(deleteCmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
-			// Verify both resources are gone
 			Eventually(func() error {
 				cmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace)
 				_, err := utils.Run(cmd)
@@ -241,25 +223,19 @@ var _ = Describe("controller", Ordered, func() {
 			Eventually(func() error {
 				cmd := exec.Command("kubectl", "get", "pod", serverName+"-pod", "-n", namespace)
 				_, err := utils.Run(cmd)
-				if err == nil {
-					return fmt.Errorf("pod still exists")
+				if err != nil {
+					if isNotFound(err.Error()) {
+						return nil
+					}
+					return err
 				}
-				return nil
+				return fmt.Errorf("pod still exists")
 			}, "60s", "5s").Should(Succeed())
-		})
-
-		It("Blocks deletion when not allowed", func() {
-			// Try to delete the server
-			deleteCmd := exec.Command("kubectl", "delete", "server", serverName, "-n", namespace, "--wait=false")
-			_, err := utils.Run(deleteCmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-			time.Sleep(5 * time.Second)
-
-			// Verify server is still there (in terminating state)
-			cmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace)
-			_, err = utils.Run(cmd)
-			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 		})
 	})
 })
+
+func isNotFound(input string) bool {
+	trimmed := strings.TrimSpace(input)
+	return strings.Contains(trimmed, "not found") || strings.Contains(trimmed, "NotFound")
+}

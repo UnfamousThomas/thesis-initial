@@ -163,12 +163,6 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	if err := r.Get(ctx, namespacedName, pod); err != nil {
 		return err
 	}
-	if err := r.Delete(ctx, pod); err != nil {
-		return err
-	}
-	if err := r.Get(ctx, namespacedName, pod); err != nil {
-		return err
-	}
 	allowed, err := r.DeletionAllowed.IsDeletionAllowed(server, pod)
 	if err != nil {
 		return fmt.Errorf("failed to check for deletion for server: %s", err)
@@ -177,11 +171,18 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 		return errors.New("server deletion not allowed")
 	}
 
-	if pod != nil {
+	if pod != nil && controllerutil.ContainsFinalizer(pod, SERVER_FINALIZER) {
 		controllerutil.RemoveFinalizer(pod, SERVER_FINALIZER)
 		if err := r.Update(ctx, pod); err != nil {
 			return err
 		}
+		if err := r.Get(ctx, namespacedName, pod); err != nil {
+			return err
+		}
+	}
+
+	if err := r.Delete(ctx, pod); err != nil {
+		return err
 	}
 
 	meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{

@@ -7,6 +7,9 @@ import (
 
 func CreateServerForFleet(fleet v1alpha1.Fleet, namespace string) *v1alpha1.Server {
 	labels := fleet.Labels
+	if labels == nil {
+		labels = make(map[string]string)
+	}
 	labels["fleet"] = fleet.Name
 	server := v1alpha1.Server{
 		ObjectMeta: metav1.ObjectMeta{

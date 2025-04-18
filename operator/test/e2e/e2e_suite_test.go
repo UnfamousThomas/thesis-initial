@@ -32,7 +32,13 @@ const projectimage = "example.com/loputoo:v0.0.1"
 const example_server_image = "example.com/example-server:v0.0.1"
 const sidecar_image = "ghcr.io/unfamousthomas/sidecar:latest"
 
+const serverName = "test-server"
+const systemns = "loputoo-system"
+
+var controllerPodName string
+
 var _ = BeforeSuite(func() {
+	By("Setting up timeout")
 	By("resetting the Kind cluster")
 	cmd := exec.Command("kind", "delete", "cluster", "--name", "kind")
 	_, _ = utils.Run(cmd)
@@ -43,8 +49,8 @@ var _ = BeforeSuite(func() {
 	By("installing the cert-manager")
 	Expect(utils.InstallCertManager()).To(Succeed())
 
-	By("creating manager namespace")
-	cmd = exec.Command("kubectl", "create", "ns", namespace)
+	By("creating manager systemns")
+	cmd = exec.Command("kubectl", "create", "ns", systemns)
 	_, _ = utils.Run(cmd)
 
 	By("building the manager(Operator) image")
@@ -84,7 +90,7 @@ var _ = BeforeSuite(func() {
 				"{{ if not .metadata.deletionTimestamp }}"+
 				"{{ .metadata.name }}"+
 				"{{ \"\\n\" }}{{ end }}{{ end }}",
-			"-n", namespace,
+			"-n", systemns,
 		)
 
 		podOutput, err := utils.Run(cmd)
@@ -99,7 +105,7 @@ var _ = BeforeSuite(func() {
 		// Validate pod status
 		cmd = exec.Command("kubectl", "get",
 			"pods", controllerPodName, "-o", "jsonpath={.status.phase}",
-			"-n", namespace,
+			"-n", systemns,
 		)
 		status, err := utils.Run(cmd)
 		ExpectWithOffset(2, err).NotTo(HaveOccurred())
@@ -110,7 +116,7 @@ var _ = BeforeSuite(func() {
 		// Check if all containers are ready
 		cmd = exec.Command("kubectl", "get",
 			"pods", controllerPodName, "-o", "jsonpath={.status.containerStatuses[*].ready}",
-			"-n", namespace,
+			"-n", systemns,
 		)
 		readyStatus, err := utils.Run(cmd)
 		ExpectWithOffset(2, err).NotTo(HaveOccurred())
@@ -123,7 +129,7 @@ var _ = BeforeSuite(func() {
 
 		// Check that webhook service is ready
 		cmd = exec.Command("kubectl", "get", "svc", "loputoo-webhook-service",
-			"-n", namespace, "-o", "jsonpath={.spec.clusterIP}")
+			"-n", systemns, "-o", "jsonpath={.spec.clusterIP}")
 		svcIP, err := utils.Run(cmd)
 		if err != nil || string(svcIP) == "" {
 			return fmt.Errorf("webhook service not ready")
@@ -131,7 +137,7 @@ var _ = BeforeSuite(func() {
 
 		// Check that webhook endpoints are ready
 		cmd = exec.Command("kubectl", "get", "endpoints", "loputoo-webhook-service",
-			"-n", namespace, "-o", "jsonpath={.subsets[0].addresses[0].ip}")
+			"-n", systemns, "-o", "jsonpath={.subsets[0].addresses[0].ip}")
 		endpointIP, err := utils.Run(cmd)
 		if err != nil || string(endpointIP) == "" {
 			return fmt.Errorf("webhook endpoints not ready")
@@ -170,8 +176,8 @@ var _ = AfterSuite(func() {
 	By("uninstalling the cert-manager bundle")
 	utils.UninstallCertManager()
 
-	By("removing manager namespace")
-	cmd = exec.Command("kubectl", "delete", "ns", namespace)
+	By("removing manager systemns")
+	cmd = exec.Command("kubectl", "delete", "ns", systemns)
 	_, _ = utils.Run(cmd)
 })
 
