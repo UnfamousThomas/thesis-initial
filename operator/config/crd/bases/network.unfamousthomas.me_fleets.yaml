@@ -36,19 +36,25 @@ spec:
               scaling:
                 properties:
                   agePriority:
+                    default: oldest_first
+                    enum:
+                    - oldest_first
+                    - smallest_first
                     type: string
                   prioritizeAllowed:
+                    default: true
                     type: boolean
                   replicas:
+                    default: 1
                     format: int32
                     type: integer
                 required:
-                - agePriority
                 - replicas
                 type: object
               spec:
                 properties:
                   allowForceDelete:
+                    default: false
                     type: boolean
                   pod:
                     properties:

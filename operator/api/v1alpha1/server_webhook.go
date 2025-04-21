@@ -18,8 +18,11 @@ package v1alpha1
 
 import (
 	"errors"
+	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -37,31 +40,25 @@ func (r *Server) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
 // +kubebuilder:webhook:path=/mutate-network-unfamousthomas-me-v1alpha1-server,mutating=true,failurePolicy=fail,sideEffects=None,groups=network.unfamousthomas.me,resources=servers,verbs=create;update,versions=v1alpha1,name=mserver.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Defaulter = &Server{}
 
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *Server) Default() {
-	serverlog.Info("default", "name", r.Name)
-
-	r.Spec.AllowForceDelete = false
-	r.Spec.TimeOut = &metav1.Duration{Duration: 10 * time.Minute}
+	if r.Spec.TimeOut == nil {
+		r.Spec.TimeOut = &metav1.Duration{Duration: time.Minute * 40}
+	}
 }
 
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
-// +kubebuilder:webhook:path=/validate-network-unfamousthomas-me-v1alpha1-server,mutating=false,failurePolicy=fail,sideEffects=None,groups=network.unfamousthomas.me,resources=servers,verbs=create;update,versions=v1alpha1,name=vserver.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-network-unfamousthomas-me-v1alpha1-server,mutating=false,failurePolicy=fail,sideEffects=None,groups=network.unfamousthomas.me,resources=servers,verbs=create;update;delete,versions=v1alpha1,name=vserver.kb.io,admissionReviewVersions=v1
 
 var _ webhook.Validator = &Server{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *Server) ValidateCreate() (admission.Warnings, error) {
-	serverlog.Info("validate create", "name", r.Name)
-
 	if len(r.Spec.Pod.Containers) < 1 {
 		return nil, errors.New("at least 1 container required")
 	}
@@ -70,15 +67,22 @@ func (r *Server) ValidateCreate() (admission.Warnings, error) {
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
 func (r *Server) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
-	serverlog.Info("validate update", "name", r.Name)
+	oldServer, ok := old.(*Server)
+	if !ok {
+		return nil, fmt.Errorf("expected old object to be *Server, got %T", old)
+	}
+	if arePodSpecsEqual(oldServer.Spec.Pod, r.Spec.Pod) {
+		return nil, errors.New("updating a servers pod spec is not allowed, please remake the server")
+	}
 
-	// TODO(user): fill in your validation logic upon object update.
 	return nil, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
 func (r *Server) ValidateDelete() (admission.Warnings, error) {
-	serverlog.Info("validate delete", "name", r.Name)
-
 	return nil, nil
+}
+
+func arePodSpecsEqual(a, b corev1.PodSpec) bool {
+	return reflect.DeepEqual(a, b)
 }

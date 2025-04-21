@@ -27,6 +27,7 @@ type GameTypeSpec struct {
 }
 
 type TypeScaling struct {
+	// +kubebuilder:default=1
 	CurrentReplicas int `json:"replicas"`
 }
 

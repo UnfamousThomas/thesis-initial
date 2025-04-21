@@ -27,6 +27,7 @@ spec:
           spec:
             properties:
               allowForceDelete:
+                default: false
                 type: boolean
               pod:
                 properties:

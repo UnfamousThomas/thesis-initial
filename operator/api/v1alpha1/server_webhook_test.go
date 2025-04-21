@@ -18,14 +18,30 @@ package v1alpha1
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 )
 
 var _ = Describe("Server Webhook", func() {
 
 	Context("When creating Server under Defaulting Webhook", func() {
 		It("Should fill in the default value if a required field is empty", func() {
+			server := Server{
+				Spec: ServerSpec{
+					Pod: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Image: "image",
+							},
+						},
+					},
+				},
+			}
 
-			// TODO(user): Add your logic here
+			server.Default()
+			Expect(server.Spec.TimeOut).To(Equal(&metav1.Duration{Duration: time.Minute * 40}))
 
 		})
 	})
@@ -33,7 +49,15 @@ var _ = Describe("Server Webhook", func() {
 	Context("When creating Server under Validating Webhook", func() {
 		It("Should deny if a required field is empty", func() {
 
-			// TODO(user): Add your logic here
+			server := Server{
+				Spec: ServerSpec{
+					Pod: corev1.PodSpec{},
+				},
+			}
+
+			_, err := server.ValidateCreate()
+
+			Expect(err).To(HaveOccurred())
 
 		})
 

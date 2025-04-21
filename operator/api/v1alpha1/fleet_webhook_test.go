@@ -18,6 +18,10 @@ package v1alpha1
 
 import (
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 )
 
 var _ = Describe("Fleet Webhook", func() {
@@ -25,6 +29,26 @@ var _ = Describe("Fleet Webhook", func() {
 	Context("When creating Fleet under Defaulting Webhook", func() {
 		It("Should fill in the default value if a required field is empty", func() {
 
+			fleet := &Fleet{
+				Spec: FleetSpec{
+					ServerSpec: ServerSpec{
+						Pod: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Image: "foo:bar",
+								},
+							},
+						},
+					},
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "default",
+					Namespace: "default",
+				},
+			}
+			fleet.Default()
+
+			Expect(fleet.Spec.ServerSpec.TimeOut).To(Equal(&metav1.Duration{Duration: time.Minute * 40}))
 			// TODO(user): Add your logic here
 
 		})
