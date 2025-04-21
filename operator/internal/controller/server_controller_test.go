@@ -154,9 +154,11 @@ var _ = Describe("ServerReconciler", func() {
 				DeletionAllowed: checker,
 			}
 			By("Reconciling the resource")
-			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: namespacedName})
 			Expect(err).NotTo(HaveOccurred())
-			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: namespacedName})
 			Expect(err).NotTo(HaveOccurred())
 			By("Validating a Pod is created")
 			pod := &corev1.Pod{}

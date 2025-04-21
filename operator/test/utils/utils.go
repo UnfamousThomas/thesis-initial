@@ -138,3 +138,8 @@ func GetProjectDir() (string, error) {
 	wd = strings.Replace(wd, "/test/e2e", "", -1)
 	return wd, nil
 }
+
+func IsNotFound(input string) bool {
+	trimmed := strings.TrimSpace(input)
+	return strings.Contains(trimmed, "not found") || strings.Contains(trimmed, "NotFound") || strings.Contains(trimmed, "No resources found")
+}

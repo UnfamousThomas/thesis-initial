@@ -21,6 +21,9 @@ func GetPodIP(podName, namespace string) (string, error) {
 func SendAllowDeleteRequest(ip string, namespace string) error {
 	// Create a temporary pod with curl installed
 	// This is to avoid issues with networking in KinD clusters
+	if ip == "" {
+		return fmt.Errorf("ip is invalid")
+	}
 	curlPodYaml := fmt.Sprintf(`
 apiVersion: v1
 kind: Pod

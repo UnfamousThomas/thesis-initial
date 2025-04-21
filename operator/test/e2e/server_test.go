@@ -21,7 +21,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -84,7 +83,7 @@ var _ = Describe("Server Controller", Ordered, func() {
 				By("Get IP")
 				ip, err := utils.GetPodIP(serverName+"-pod", namespace)
 				if err != nil {
-					if isNotFound(err.Error()) {
+					if utils.IsNotFound(err.Error()) {
 						log.Printf("Resource not found, returning nil")
 						return nil
 					}
@@ -101,16 +100,16 @@ var _ = Describe("Server Controller", Ordered, func() {
 
 				By("Check if the server still exists")
 				// Verify server is actually gone
-				verifyCmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace, "--ignore-not-found")
+				verifyCmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace)
 				output, err := utils.Run(verifyCmd)
 
-				if isNotFound(string(output)) {
+				if utils.IsNotFound(string(output)) {
 					log.Printf("Resource not found, returning nil")
 					return nil
 				}
 
 				if err != nil {
-					if isNotFound(err.Error()) {
+					if utils.IsNotFound(err.Error()) {
 						return nil
 					}
 					return err
@@ -161,7 +160,8 @@ var _ = Describe("Server Controller", Ordered, func() {
 				"-o", "jsonpath={.metadata.labels.server}")
 			output, err := utils.Run(labelCmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
-			ExpectWithOffset(1, string(output)).Should(Equal(serverName))
+			ExpectWithOffset(1, string(output)).
+				Should(Equal(serverName))
 		})
 
 		It("Don't delete with finalizers", func() {
@@ -199,6 +199,7 @@ var _ = Describe("Server Controller", Ordered, func() {
 		})
 
 		It("Handles deletion properly when allowed", func() {
+			By("Send delete allow request")
 			ip, err := utils.GetPodIP(serverName+"-pod", namespace)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
@@ -207,24 +208,26 @@ var _ = Describe("Server Controller", Ordered, func() {
 				fmt.Printf("Server %s failed to send delete request. This could have disastrous consequenses. Error: %s\n", serverName, err)
 			}
 
+			By("Trigger deletion")
 			deleteCmd := exec.Command("kubectl", "delete", "server", serverName, "-n", namespace)
 			_, err = utils.Run(deleteCmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
+			By("Checking if server was deleted")
 			Eventually(func() error {
 				cmd := exec.Command("kubectl", "get", "server", serverName, "-n", namespace)
-				_, err := utils.Run(cmd)
-				if err == nil {
-					return fmt.Errorf("server still exists")
+				output, err := utils.Run(cmd)
+				if utils.IsNotFound(err.Error()) || utils.IsNotFound(string(output)) {
+					return nil
 				}
-				return nil
+				return fmt.Errorf("server still exists")
 			}, "60s", "5s").Should(Succeed())
 
 			Eventually(func() error {
 				cmd := exec.Command("kubectl", "get", "pod", serverName+"-pod", "-n", namespace)
 				_, err := utils.Run(cmd)
 				if err != nil {
-					if isNotFound(err.Error()) {
+					if utils.IsNotFound(err.Error()) {
 						return nil
 					}
 					return err
@@ -234,8 +237,3 @@ var _ = Describe("Server Controller", Ordered, func() {
 		})
 	})
 })
-
-func isNotFound(input string) bool {
-	trimmed := strings.TrimSpace(input)
-	return strings.Contains(trimmed, "not found") || strings.Contains(trimmed, "NotFound")
-}

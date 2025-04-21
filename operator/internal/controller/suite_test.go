@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -93,20 +92,3 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
-
-func firstFolder(path string) string {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		panic(err)
-	}
-
-	parts := strings.Split(filepath.Clean(absPath), string(filepath.Separator))
-
-	for _, part := range parts {
-		if part != "" {
-			return part
-
-		}
-	}
-	return ""
-}

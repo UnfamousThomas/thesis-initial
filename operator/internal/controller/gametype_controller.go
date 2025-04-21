@@ -80,13 +80,11 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	logger.Info("Reconciling gametype updates")
 	result, err, done := r.handleUpdating(ctx, gametype, logger)
 	if done {
 		return result, err
 	}
 
-	logger.Info("Reconciliation finished")
 	return ctrl.Result{Requeue: true}, nil
 }
 

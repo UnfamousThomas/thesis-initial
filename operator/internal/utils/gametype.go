@@ -25,6 +25,9 @@ func GetFleetsForType(ctx context.Context, c client.Client, gametype *networkv1a
 
 func GetFleetObjectForType(gametype *networkv1alpha1.GameType) *networkv1alpha1.Fleet {
 	labels := gametype.Labels
+	if labels == nil {
+		labels = map[string]string{}
+	}
 	labels["type"] = gametype.Name
 
 	fleet := &networkv1alpha1.Fleet{

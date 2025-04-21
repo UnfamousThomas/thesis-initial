@@ -54,3 +54,33 @@ spec:
 
 	return manifest
 }
+
+func CreateGameTypeManifest(name string, namespace string, image string, replicas int, prioritize bool, priority networkv1alpha1.Priority) string {
+	manifest := fmt.Sprintf(`
+apiVersion: network.unfamousthomas.me/v1alpha1
+kind: GameType
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  scaling:
+    replicas: 2
+  fleetSpec:
+    scaling:
+      replicas: %d
+      prioritizeAllowed: %s
+      agePriority: %s
+    spec:
+      timeout: 5m
+      allowForceDelete: false
+      pod:
+        containers:
+        - name: gameserver
+          image: %s
+          ports:
+          - containerPort: 8081
+            protocol: TCP
+`, name, namespace, replicas, strconv.FormatBool(prioritize), priority, image)
+
+	return manifest
+}
