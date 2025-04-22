@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -56,6 +57,11 @@ var _ webhook.Validator = &GameType{}
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
 func (r *GameType) ValidateCreate() (admission.Warnings, error) {
 
+	for _, container := range r.Spec.FleetSpec.ServerSpec.Pod.Containers {
+		if container.Image == "" {
+			return nil, errors.New("image is required for every container")
+		}
+	}
 	return nil, nil
 }
 

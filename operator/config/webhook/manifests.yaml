@@ -128,6 +128,7 @@ webhooks:
     operations:
     - CREATE
     - UPDATE
+    - DELETE
     resources:
     - gameautoscalers
   sideEffects: None

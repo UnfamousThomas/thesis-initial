@@ -48,12 +48,14 @@ func (t *TestWebhook) SendScaleWebhookRequest(autoscaler *networkv1alpha1.GameAu
 	}, nil
 }
 
+var duration = metav1.Duration{Duration: 5 * time.Second}
+var path = "/scale"
 var basicGameautoscaler = networkv1alpha1.GameAutoscalerSpec{
 	GameName: "some-random-game",
 	AutoscalePolicy: networkv1alpha1.AutoscalePolicy{
 		Type: networkv1alpha1.Webhook,
 		WebhookAutoscalerSpec: networkv1alpha1.WebhookAutoscalerSpec{
-			Path: "/scale",
+			Path: &path,
 			Service: &networkv1alpha1.Service{
 				Name:      "some-random-service",
 				Namespace: metav1.NamespaceDefault,
@@ -62,8 +64,8 @@ var basicGameautoscaler = networkv1alpha1.GameAutoscalerSpec{
 		},
 	},
 	Sync: networkv1alpha1.Sync{
-		Type:          networkv1alpha1.FixedInterval,
-		FixedInterval: 5,
+		Type: networkv1alpha1.FixedInterval,
+		Time: &duration,
 	},
 }
 
@@ -261,47 +263,6 @@ var _ = Describe("GameAutoscaler Controller", func() {
 			By("Reconcile with invalid sync type")
 			err := k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
 			Expect(err).To(BeNil())
-
-			gameautoscaler.Spec.Sync.Type = "randomstring"
-			//Logic block to update the autoscaler...
-			err = k8sClient.Update(ctx, gameautoscaler)
-			Expect(err).To(BeNil())
-			Eventually(func() error {
-				autoscaler := networkv1alpha1.GameAutoscaler{}
-				err := k8sClient.Get(ctx, autoscalerNamespacedName, &autoscaler)
-				if err != nil {
-					return err
-				}
-				if autoscaler.Spec.Sync.Type != "randomstring" {
-					return fmt.Errorf("still correct sync")
-				}
-				return nil
-			}, time.Second*5, time.Millisecond*100).Should(Succeed())
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
-			Expect(err).NotTo(BeNil())
-
-			By("Reconcile with invalid sync type")
-			err = k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
-			Expect(err).To(BeNil())
-
-			gameautoscaler.Spec.Sync.Type = networkv1alpha1.FixedInterval
-			gameautoscaler.Spec.AutoscalePolicy.Type = "randomstring"
-			//Logic block to update the autoscaler...
-			err = k8sClient.Update(ctx, gameautoscaler)
-			Expect(err).To(BeNil())
-			Eventually(func() error {
-				autoscaler := networkv1alpha1.GameAutoscaler{}
-				err := k8sClient.Get(ctx, autoscalerNamespacedName, &autoscaler)
-				if err != nil {
-					return err
-				}
-				if autoscaler.Spec.AutoscalePolicy.Type != "randomstring" {
-					return fmt.Errorf("still correct autoscale")
-				}
-				return nil
-			}, time.Second*5, time.Millisecond*100).Should(Succeed())
-			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
-			Expect(err).NotTo(BeNil())
 
 			By("Invalid gametype reconcile")
 			err = k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)

@@ -48,6 +48,7 @@ type GameAutoscalerSpec struct {
 //The following structs handle the policy of how to sync
 
 type AutoscalePolicy struct {
+	// +kubebuilder:validation:Enum=webhook
 	Type                  PolicyStrategy        `json:"type"`
 	WebhookAutoscalerSpec WebhookAutoscalerSpec `json:"webhook"`
 }
@@ -55,7 +56,7 @@ type AutoscalePolicy struct {
 type WebhookAutoscalerSpec struct {
 	// +kubebuilder:validation:Optional
 	Url  *string `json:"url"`
-	Path string  `json:"path"`
+	Path *string `json:"path"`
 	// +kubebuilder:validation:Optional
 	Service *Service `json:"service"`
 }
@@ -68,8 +69,9 @@ type Service struct {
 
 // The following sync structs handle when to sync
 type Sync struct {
-	Type          SyncStrategy `json:"type"`
-	FixedInterval int          `json:"fixedInterval"`
+	// +kubebuilder:validation:Enum=fixedinterval
+	Type SyncStrategy     `json:"type"`
+	Time *metav1.Duration `json:"interval"`
 }
 
 // GameAutoscalerStatus defines the observed state of GameAutoscaler

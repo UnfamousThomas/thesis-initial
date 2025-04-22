@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"errors"
 	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -62,6 +63,16 @@ func (r *Fleet) ValidateCreate() (admission.Warnings, error) {
 		return nil, err
 	}
 
+	for _, container := range r.Spec.ServerSpec.Pod.Containers {
+		if container.Image == "" {
+			return nil, errors.New("image is required for every container")
+		}
+	}
+
+	if r.Spec.ServerSpec.TimeOut == nil {
+		return nil, errors.New("timeout is required for every server")
+	}
+
 	return nil, nil
 }
 
@@ -97,6 +108,9 @@ func (r *Fleet) ValidateDelete() (admission.Warnings, error) {
 }
 
 func (r Fleet) validatePriorities() error {
+	if r.Spec.Scaling.AgePriority == "" {
+		return fmt.Errorf("AgePriority is required")
+	}
 	if _, exists := validPriorities[r.Spec.Scaling.AgePriority]; !exists {
 		return fmt.Errorf("unknown priority %s", r.Spec.Scaling.AgePriority)
 	}

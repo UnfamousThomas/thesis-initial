@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 	"io"
@@ -27,7 +28,11 @@ func (w ProductionWebhookRequest) SendScaleWebhookRequest(autoscaler *networkv1a
 		service := autoscalerSpec.Service
 		url = fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", service.Name, service.Namespace, service.Port)
 	}
-	url = url + "/" + autoscalerSpec.Path
+	if autoscalerSpec.Path == nil {
+		return AutoscaleResponse{}, errors.New("missing path")
+	}
+	path := *autoscalerSpec.Path
+	url = url + "/" + path
 
 	httpClient := &http.Client{
 		Timeout: 10 * time.Second,

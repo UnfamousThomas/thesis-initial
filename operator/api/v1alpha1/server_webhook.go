@@ -62,6 +62,12 @@ func (r *Server) ValidateCreate() (admission.Warnings, error) {
 	if len(r.Spec.Pod.Containers) < 1 {
 		return nil, errors.New("at least 1 container required")
 	}
+
+	for _, container := range r.Spec.Pod.Containers {
+		if container.Image == "" {
+			return nil, errors.New("image is required for every container")
+		}
+	}
 	return nil, nil
 }
 

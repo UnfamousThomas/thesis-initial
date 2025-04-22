@@ -78,11 +78,9 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{}, fmt.Errorf("%s is not a valid sync type, currently only fixed interval is supported", autoscaler.Spec.Sync.Type)
 	}
 
-	secondsBetween := time.Second * time.Duration(autoscaler.Spec.Sync.FixedInterval)
-
 	if !result.Scale {
 		return ctrl.Result{
-			RequeueAfter: secondsBetween,
+			RequeueAfter: autoscaler.Spec.Sync.Time.Duration,
 		}, nil
 	}
 
@@ -93,7 +91,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	return ctrl.Result{
-		RequeueAfter: secondsBetween,
+		RequeueAfter: autoscaler.Spec.Sync.Time.Duration,
 	}, nil
 }
 
