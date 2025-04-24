@@ -70,8 +70,9 @@ var _ = Describe("GameType Controller", func() {
 
 		AfterEach(func() {
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -108,8 +109,9 @@ var _ = Describe("GameType Controller", func() {
 
 		It("Has correct finalizer", func() {
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -136,8 +138,9 @@ var _ = Describe("GameType Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &GameTypeReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			By("Fail get")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -158,8 +161,9 @@ var _ = Describe("GameType Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &GameTypeReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			By("Fail update")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -180,8 +184,9 @@ var _ = Describe("GameType Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &GameTypeReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			By("initial setup")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -220,8 +225,9 @@ var _ = Describe("GameType Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &GameTypeReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			By("Fail create")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -237,8 +243,9 @@ var _ = Describe("GameType Controller", func() {
 		It("Should create a fleet with the correct label", func() {
 			By("Setup reconciler")
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 
 			By("Trigger initial reconciliations")
@@ -257,8 +264,9 @@ var _ = Describe("GameType Controller", func() {
 		It("Replaces the fleet when FleetSpec changes", func() {
 			By("Initial reconciliation")
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(BeNil())
@@ -293,8 +301,9 @@ var _ = Describe("GameType Controller", func() {
 		It("Updates the replica count when changed", func() {
 			By("Initial reconciliation")
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(BeNil())
@@ -319,8 +328,9 @@ var _ = Describe("GameType Controller", func() {
 		It("Deletes the oldest fleet if multiple fleets exist", func() {
 			By("Initial reconciliation")
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(BeNil())

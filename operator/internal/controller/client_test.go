@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sync"
 )
 
 type FakeFailClient struct {
@@ -100,4 +101,49 @@ func (client FakeFailClient) IsObjectNamespaced(obj runtime.Object) (bool, error
 func isPod(obj client.Object) bool {
 	_, ok := obj.(*corev1.Pod)
 	return ok
+}
+
+type FakeEvent struct {
+	Object      runtime.Object
+	EventType   string
+	Reason      string
+	Message     string
+	Annotations map[string]string
+}
+type FakeRecorder struct {
+	mu     sync.Mutex
+	Events []FakeEvent
+}
+
+func NewFakeRecorder() *FakeRecorder {
+	return &FakeRecorder{}
+}
+
+func (f *FakeRecorder) Event(object runtime.Object, eventtype, reason, message string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.Events = append(f.Events, FakeEvent{
+		Object:    object,
+		EventType: eventtype,
+		Reason:    reason,
+		Message:   message,
+	})
+}
+
+func (f *FakeRecorder) Eventf(object runtime.Object, eventtype, reason, messageFmt string, args ...interface{}) {
+	f.Event(object, eventtype, reason, fmt.Sprintf(messageFmt, args...))
+}
+
+func (f *FakeRecorder) AnnotatedEventf(object runtime.Object, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.Events = append(f.Events, FakeEvent{
+		Object:      object,
+		EventType:   eventtype,
+		Reason:      reason,
+		Message:     fmt.Sprintf(messageFmt, args...),
+		Annotations: annotations,
+	})
 }

@@ -191,9 +191,10 @@ var _ = Describe("GameAutoscaler Controller", func() {
 		It("should successfully reconcile the gameautoscaler", func() {
 			By("create the reconciler for gameautoscaler")
 			controllerReconciler := &GameAutoscalerReconciler{
-				Client:  k8sClient,
-				Scheme:  k8sClient.Scheme(),
-				Webhook: hook,
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Webhook:  hook,
+				Recorder: NewFakeRecorder(),
 			}
 
 			By("first reconciling for gameautoscaler")
@@ -226,9 +227,10 @@ var _ = Describe("GameAutoscaler Controller", func() {
 		It("Reconcile with scaling", func() {
 			By("Setup reconciler")
 			controllerReconciler := &GameAutoscalerReconciler{
-				Client:  k8sClient,
-				Scheme:  k8sClient.Scheme(),
-				Webhook: hook,
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Webhook:  hook,
+				Recorder: NewFakeRecorder(),
 			}
 
 			By("Setup hook")
@@ -249,9 +251,10 @@ var _ = Describe("GameAutoscaler Controller", func() {
 		It("Reconcile with invalid types", func() {
 			By("Setup reconciler")
 			controllerReconciler := &GameAutoscalerReconciler{
-				Client:  k8sClient,
-				Scheme:  k8sClient.Scheme(),
-				Webhook: hook,
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Webhook:  hook,
+				Recorder: NewFakeRecorder(),
 			}
 
 			gameautoscaler := &networkv1alpha1.GameAutoscaler{
@@ -298,9 +301,10 @@ var _ = Describe("GameAutoscaler Controller", func() {
 				FailGetOnPod: false,
 			}
 			controllerReconciler := &GameAutoscalerReconciler{
-				Client:  fakeClient,
-				Scheme:  fakeClient.Scheme(),
-				Webhook: hook,
+				Client:   fakeClient,
+				Scheme:   fakeClient.Scheme(),
+				Webhook:  hook,
+				Recorder: NewFakeRecorder(),
 			}
 			hook.Scale = true
 			hook.Replicas = 10
