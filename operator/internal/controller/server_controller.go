@@ -136,6 +136,10 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 
 	if err != nil { // Pod does not exist
 		newPod := utils.GetNewPod(server, server.Namespace)
+		err = controllerutil.SetControllerReference(server, newPod, r.Scheme)
+		if err != nil {
+			return false, fmt.Errorf("failed to set controller reference on Pod: %w", err)
+		}
 		if err := r.Create(ctx, newPod); err != nil {
 			meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
 				Type:               "PodFailed",
@@ -144,7 +148,7 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 				Reason:             "PodCreationFailed",
 				Message:            "Failed to create the Pod",
 			})
-			r.emitEventf(server, corev1.EventTypeWarning, utils.ReasonServerDeletionNotAllowed, "Pod creation errored: %s", err)
+			r.emitEventf(server, corev1.EventTypeWarning, utils.ReasonServerPodCreationFailed, "Pod creation errored: %s", err)
 			return false, err
 		}
 
