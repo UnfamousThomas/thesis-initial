@@ -21,6 +21,7 @@ import (
 	"fmt"
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -59,8 +60,10 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if fleet.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(fleet, FLEET_FINALIZER) {
 		controllerutil.AddFinalizer(fleet, FLEET_FINALIZER)
 		if err := r.Update(ctx, fleet); err != nil {
+			r.emitEventf(fleet, corev1.EventTypeNormal, utils.ReasonFleetUpdateFailed, "Fleet finalizer update failed: %s", err)
 			return ctrl.Result{Requeue: true}, fmt.Errorf("failed to add finalizer to fleet: %w", err)
 		}
+		r.emitEvent(fleet, corev1.EventTypeNormal, utils.ReasonFleetInitialized, "Fleet finalizers added")
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -114,6 +117,7 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 				return err
 			}
 		}
+		r.emitEventf(fleet, corev1.EventTypeNormal, utils.ReasonFleetScaleServers, "Scaled servers up to %d", fleet.Spec.Scaling.Replicas)
 	}
 	//Scale down
 	if fleet.Status.CurrentReplicas > fleet.Spec.Scaling.Replicas {
@@ -128,6 +132,7 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 		if err := r.Client.Delete(ctx, server); err != nil {
 			return err
 		}
+		r.emitEventf(fleet, corev1.EventTypeNormal, utils.ReasonFleetScaleServers, "Scaled servers down to %d", fleet.Spec.Scaling.Replicas)
 	}
 	return nil
 }
@@ -159,8 +164,18 @@ func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1al
 	if len(servers.Items) == 0 {
 		controllerutil.RemoveFinalizer(fleet, FLEET_FINALIZER)
 		if err := r.Update(ctx, fleet); err != nil {
+			r.emitEventf(fleet, corev1.EventTypeWarning, utils.ReasonFleetUpdateFailed, "Failed to remvoe finalizer: %s", err)
 			return err
 		}
+		r.emitEvent(fleet, corev1.EventTypeNormal, utils.ReasonFleetServersRemoved, "Fleet finalizers removed correctly")
 	}
 	return nil
+}
+
+func (r *FleetReconciler) emitEvent(object runtime.Object, eventtype string, reason utils.EventReason, message string) {
+	r.Recorder.Event(object, eventtype, string(reason), message)
+}
+
+func (r *FleetReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args)
 }

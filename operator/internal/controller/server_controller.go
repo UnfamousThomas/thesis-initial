@@ -73,6 +73,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if server.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(server, SERVER_FINALIZER) {
 		controllerutil.AddFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
+			r.emitEventf(server, corev1.EventTypeWarning, utils.ReasonServerUpdateFAiled, "failed to update server: %s", err)
 			return ctrl.Result{}, fmt.Errorf("failed to update server for finalizer: %s", err)
 		}
 		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Finalizer added")
@@ -233,5 +234,5 @@ func (r *ServerReconciler) emitEvent(object runtime.Object, eventtype string, re
 }
 
 func (r *ServerReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
-	r.Recorder.Event(object, eventtype, string(reason), message)
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args)
 }
