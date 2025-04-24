@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,8 +35,9 @@ import (
 // GameAutoscalerReconciler reconciles a GameAutoscaler object
 type GameAutoscalerReconciler struct {
 	client.Client
-	Scheme  *runtime.Scheme
-	Webhook utils.Webhook
+	Scheme   *runtime.Scheme
+	Webhook  utils.Webhook
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=gameautoscalers,verbs=get;list;watch;create;update;patch;delete
