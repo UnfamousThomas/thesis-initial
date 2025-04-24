@@ -47,7 +47,7 @@ var _ = Describe("Server Webhook", func() {
 	})
 
 	Context("When creating Server under Validating Webhook", func() {
-		It("Should deny if a required field is empty", func() {
+		It("Should deny if a required field is empty for creation", func() {
 
 			server := Server{
 				Spec: ServerSpec{
@@ -55,16 +55,75 @@ var _ = Describe("Server Webhook", func() {
 				},
 			}
 
+			By("Check if containers are required")
 			_, err := server.ValidateCreate()
-
 			Expect(err).To(HaveOccurred())
 
+			By("Check if image is required")
+			server.Spec.Pod.Containers = []corev1.Container{
+				{
+					Name: "test",
+				},
+			}
+			_, err = server.ValidateCreate()
+			Expect(err).To(HaveOccurred())
+
+			By("Check if suceeds with image")
+			server.Spec.Pod.Containers[0].Image = "image"
+			_, err = server.ValidateCreate()
+			Expect(err).To(Succeed())
 		})
+	})
 
-		It("Should admit if all required fields are provided", func() {
+	Context("When updating Server under Validating Webhook", func() {
+		It("Should deny if a required field is invalid for update", func() {
+			server := Server{
+				Spec: ServerSpec{
+					Pod: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:  "test",
+								Image: "image",
+							},
+						},
+					},
+				},
+			}
+			By("Check if it errors with invalid type")
+			_, err := server.ValidateUpdate(&Fleet{})
+			Expect(err).To(HaveOccurred())
 
-			// TODO(user): Add your logic here
+			By("Check if fails if different image")
+			newServer := Server{
+				Spec: ServerSpec{
+					Pod: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name:  "test",
+								Image: "image2",
+							},
+						},
+					},
+				},
+			}
+			_, err = server.ValidateUpdate(&newServer)
+			Expect(err).To(HaveOccurred())
 
+			By("Check if suceeds when same pod spec")
+			newServer.Spec.Pod.Containers[0].Image = "image"
+			newServer.Spec.TimeOut = &metav1.Duration{Duration: time.Minute * 20}
+			_, err = server.ValidateUpdate(&newServer)
+			Expect(err).To(Succeed())
+		})
+	})
+	Context("When deleting Server under Validating Webhook", func() {
+		It("Should deny if a required field is invalid for deletion", func() {
+			server := Server{
+				Spec: ServerSpec{},
+			}
+
+			_, err := server.ValidateDelete()
+			Expect(err).To(Succeed())
 		})
 	})
 
