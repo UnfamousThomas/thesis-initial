@@ -19,4 +19,10 @@ const (
 	ReasonGametypeServersDeleted  EventReason = "GametypeServersDeleted"
 	ReasonGametypeSpecUpdated     EventReason = "GametypeSpecUpdated"
 	ReasonGametypeReplicasUpdated EventReason = "GametypeReplicasUpdated"
+
+	ReasonGameAutoscalerInvalidServer          EventReason = "GameAutoscalerInvalidServer"
+	ReasonGameAutoscalerInvalidAutoscalePolicy EventReason = "GameautoscalerInvalidAutoscalePolicy"
+	ReasonGameAutoscalerInvalidSyncType        EventReason = "GameautoscalerInvalidSyncType"
+	ReasonGameautoscalerWebhook                EventReason = "GameautoscalerWebhook"
+	ReasonGameautoscalerScale                  EventReason = "GameautoscalerScale"
 )
