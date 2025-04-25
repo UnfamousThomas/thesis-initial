@@ -87,10 +87,11 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		controllerutil.RemoveFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
+			r.emitEvent(server, corev1.EventTypeWarning, utils.ReasonServerDeletionAllowed, "Failed to update server object")
 			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 		}
-		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "finalizer removed")
-		return ctrl.Result{}, nil // Return after finalizer removal
+		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "Finalizer removed")
+		return ctrl.Result{Requeue: true}, nil // Return after finalizer removal
 	}
 
 	// Ensure Pod exists
@@ -139,6 +140,7 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 		newPod := utils.GetNewPod(server, server.Namespace)
 		err = controllerutil.SetControllerReference(server, newPod, r.Scheme)
 		if err != nil {
+			r.emitEventf(server, corev1.EventTypeWarning, utils.ReasonServerInitialized, "failed to set pod owner reference: %s", err)
 			return false, fmt.Errorf("failed to set controller reference on Pod: %w", err)
 		}
 		if err := r.Create(ctx, newPod); err != nil {
@@ -160,7 +162,7 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 			Reason:             "PodCreatedSuccessfully",
 			Message:            "Pod has been successfully created",
 		})
-		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Pod created succesfully")
+		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Pod created successfully")
 		return false, nil
 	}
 	return true, nil
@@ -206,7 +208,6 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 		Reason:             "PodDeleted",
 		Message:            "Pod successfully deleted during finalization",
 	})
-
 	r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerPodDeleted, "Pod successfully deleted during finalization")
 	return nil
 }

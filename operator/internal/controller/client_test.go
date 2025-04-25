@@ -122,7 +122,6 @@ func NewFakeRecorder() *FakeRecorder {
 func (f *FakeRecorder) Event(object runtime.Object, eventtype, reason, message string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-
 	f.Events = append(f.Events, FakeEvent{
 		Object:    object,
 		EventType: eventtype,
