@@ -23,6 +23,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"log"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"time"
@@ -101,11 +102,12 @@ var _ = Describe("ServerReconciler", func() {
 					Namespace: ServerNamespace,
 				},
 			}
+			fakeRecorder := NewFakeRecorder()
 			reconciler := &ServerReconciler{
 				Client:          k8sClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
-				Recorder:        NewFakeRecorder(),
+				Recorder:        fakeRecorder,
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).To(BeNil())
@@ -122,6 +124,17 @@ var _ = Describe("ServerReconciler", func() {
 				_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 				Expect(err).To(BeNil())
 
+				containsEvent := false
+				for _, event := range fakeRecorder.Events {
+					if event.Message == "finalizer removed" {
+						containsEvent = true
+					}
+				}
+
+				log.Println(fakeRecorder.Events)
+
+				Expect(containsEvent).To(BeTrue())
+
 				// Wait until the resource is deleted
 				Eventually(func() bool {
 					err := k8sClient.Get(ctx, namespacedName, server)
@@ -131,11 +144,12 @@ var _ = Describe("ServerReconciler", func() {
 		})
 
 		It("should add a finalizer if not present", func() {
+			fakeRecorder := NewFakeRecorder()
 			reconciler := &ServerReconciler{
 				Client:          k8sClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
-				Recorder:        NewFakeRecorder(),
+				Recorder:        fakeRecorder,
 			}
 			By("Reconciling the resource")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -147,6 +161,16 @@ var _ = Describe("ServerReconciler", func() {
 			Expect(err).To(BeNil())
 			Expect(k8sClient.Get(ctx, namespacedName, server)).To(Succeed())
 			Expect(controllerutil.ContainsFinalizer(server, SERVER_FINALIZER)).To(BeTrue())
+
+			By("Checking if emit was emitted")
+			containsEvent := false
+			for _, event := range fakeRecorder.Events {
+				if event.Message == "Finalizer added" {
+					containsEvent = true
+					break
+				}
+			}
+			Expect(containsEvent).To(BeTrue())
 		})
 
 		It("should create a Pod for the Server", func() {
