@@ -117,5 +117,5 @@ func (r *GameAutoscalerReconciler) emitEvent(object runtime.Object, eventtype st
 }
 
 func (r *GameAutoscalerReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
-	r.Recorder.Eventf(object, eventtype, string(reason), message, args)
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }

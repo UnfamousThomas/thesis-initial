@@ -23,7 +23,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
-	"log"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strings"
@@ -380,7 +379,6 @@ var _ = Describe("ServerReconciler", func() {
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).ToNot(BeNil())
-			log.Printf("first %s\n", recorder.Events)
 			failUpdateEvent := false
 			for _, event := range recorder.Events {
 				if strings.HasPrefix(event.Message, "failed to update server") {

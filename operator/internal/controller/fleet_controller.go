@@ -60,7 +60,7 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	if fleet.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(fleet, FLEET_FINALIZER) {
 		controllerutil.AddFinalizer(fleet, FLEET_FINALIZER)
 		if err := r.Update(ctx, fleet); err != nil {
-			r.emitEventf(fleet, corev1.EventTypeNormal, utils.ReasonFleetUpdateFailed, "Fleet finalizer update failed: %s", err)
+			r.emitEventf(fleet, corev1.EventTypeWarning, utils.ReasonFleetUpdateFailed, "Fleet finalizer update failed: %s", err)
 			return ctrl.Result{Requeue: true}, fmt.Errorf("failed to add finalizer to fleet: %w", err)
 		}
 		r.emitEvent(fleet, corev1.EventTypeNormal, utils.ReasonFleetInitialized, "Fleet finalizers added")
@@ -114,6 +114,7 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 			server := utils.CreateServerForFleet(*fleet, namespace)
 			err := r.Create(ctx, server)
 			if err != nil {
+				r.emitEventf(fleet, corev1.EventTypeWarning, utils.ReasonFleetScaleServers, "Failed to create a server: %s", err)
 				return err
 			}
 		}
@@ -130,6 +131,7 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 			return err
 		}
 		if err := r.Client.Delete(ctx, server); err != nil {
+			r.emitEventf(fleet, corev1.EventTypeWarning, utils.ReasonFleetScaleServers, "Failed to delete a server: %s", err)
 			return err
 		}
 		r.emitEventf(fleet, corev1.EventTypeNormal, utils.ReasonFleetScaleServers, "Scaled servers down to %d", fleet.Spec.Scaling.Replicas)
@@ -167,7 +169,7 @@ func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1al
 			r.emitEventf(fleet, corev1.EventTypeWarning, utils.ReasonFleetUpdateFailed, "Failed to remvoe finalizer: %s", err)
 			return err
 		}
-		r.emitEvent(fleet, corev1.EventTypeNormal, utils.ReasonFleetServersRemoved, "Fleet finalizers removed correctly")
+		r.emitEvent(fleet, corev1.EventTypeNormal, utils.ReasonFleetServersRemoved, "Fleet finalizers removed")
 	}
 	return nil
 }
@@ -177,5 +179,5 @@ func (r *FleetReconciler) emitEvent(object runtime.Object, eventtype string, rea
 }
 
 func (r *FleetReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
-	r.Recorder.Eventf(object, eventtype, string(reason), message, args)
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }

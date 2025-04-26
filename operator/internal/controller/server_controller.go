@@ -235,5 +235,5 @@ func (r *ServerReconciler) emitEvent(object runtime.Object, eventtype string, re
 }
 
 func (r *ServerReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
-	r.Recorder.Eventf(object, eventtype, string(reason), message, args)
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }

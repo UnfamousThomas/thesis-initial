@@ -203,5 +203,5 @@ func (r *GameTypeReconciler) emitEvent(object runtime.Object, eventtype string, 
 }
 
 func (r *GameTypeReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
-	r.Recorder.Eventf(object, eventtype, string(reason), message, args)
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }
