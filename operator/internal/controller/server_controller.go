@@ -73,21 +73,25 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	if server.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(server, SERVER_FINALIZER) {
 		controllerutil.AddFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
+			r.emitEventf(server, corev1.EventTypeWarning, utils.ReasonServerUpdateFAiled, "failed to update server: %s", err)
 			return ctrl.Result{}, fmt.Errorf("failed to update server for finalizer: %s", err)
 		}
+		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Finalizer added")
 		return ctrl.Result{}, nil
 	}
 
 	// Handle resource deletion
 	if server.DeletionTimestamp != nil || !server.GetDeletionTimestamp().IsZero() {
-		if err := r.handleDeletion(ctx, server); err != nil { //todo
+		if err := r.handleDeletion(ctx, server); err != nil {
 			return ctrl.Result{Requeue: true}, fmt.Errorf("failed to handle server deletion: %s", err)
 		}
 		controllerutil.RemoveFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
+			r.emitEvent(server, corev1.EventTypeWarning, utils.ReasonServerDeletionAllowed, "Failed to update server object")
 			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
 		}
-		return ctrl.Result{}, nil // Return after finalizer removal
+		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "Finalizer removed")
+		return ctrl.Result{Requeue: true}, nil // Return after finalizer removal
 	}
 
 	// Ensure Pod exists
@@ -133,7 +137,15 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 	}
 
 	if err != nil { // Pod does not exist
-		newPod := utils.GetNewPod(server, server.Namespace)
+		newPod, defaultImg := utils.GetNewPod(server, server.Namespace)
+		if defaultImg {
+			r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Setting up sidecar with default image")
+		}
+		err = controllerutil.SetControllerReference(server, newPod, r.Scheme)
+		if err != nil {
+			r.emitEventf(server, corev1.EventTypeWarning, utils.ReasonServerInitialized, "failed to set pod owner reference: %s", err)
+			return false, fmt.Errorf("failed to set controller reference on Pod: %w", err)
+		}
 		if err := r.Create(ctx, newPod); err != nil {
 			meta.SetStatusCondition(&server.Status.Conditions, metav1.Condition{
 				Type:               "PodFailed",
@@ -142,6 +154,7 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 				Reason:             "PodCreationFailed",
 				Message:            "Failed to create the Pod",
 			})
+			r.emitEventf(server, corev1.EventTypeWarning, utils.ReasonServerPodCreationFailed, "Pod creation errored: %s", err)
 			return false, err
 		}
 
@@ -152,6 +165,7 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 			Reason:             "PodCreatedSuccessfully",
 			Message:            "Pod has been successfully created",
 		})
+		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Pod created successfully")
 		return false, nil
 	}
 	return true, nil
@@ -165,14 +179,19 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	}
 	allowed, err := r.DeletionAllowed.IsDeletionAllowed(server, pod)
 	if err != nil {
+		r.emitEvent(pod, corev1.EventTypeWarning, utils.ReasonServerDeletionNotAllowed, "Deletion request did not succeed")
+		r.emitEvent(server, corev1.EventTypeWarning, utils.ReasonServerDeletionNotAllowed, "Deletion request did not succeed")
 		return fmt.Errorf("failed to check for deletion for server: %s", err)
 	}
 	if !allowed {
+		r.emitEvent(pod, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "Server did not respond with allowed")
 		return errors.New("server deletion not allowed")
 	}
 
 	if pod != nil && controllerutil.ContainsFinalizer(pod, SERVER_FINALIZER) {
 		controllerutil.RemoveFinalizer(pod, SERVER_FINALIZER)
+		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "Pod finalizer removed")
+		r.emitEvent(pod, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "Pod finalizer removed")
 		if err := r.Update(ctx, pod); err != nil {
 			return err
 		}
@@ -192,7 +211,7 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 		Reason:             "PodDeleted",
 		Message:            "Pod successfully deleted during finalization",
 	})
-
+	r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerPodDeleted, "Pod successfully deleted during finalization")
 	return nil
 }
 
@@ -206,8 +225,18 @@ func (r *ServerReconciler) ensurePodFinalizer(ctx context.Context, server *netwo
 		return false, nil
 	}
 	controllerutil.AddFinalizer(pod, SERVER_FINALIZER)
+	r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Pod finalizer added")
+	r.emitEvent(pod, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Pod finalizer added")
 	if err := r.Update(ctx, pod); err != nil {
 		return false, fmt.Errorf("failed to add finalizer to pod: %s", err)
 	}
 	return true, nil
+}
+
+func (r *ServerReconciler) emitEvent(object runtime.Object, eventtype string, reason utils.EventReason, message string) {
+	r.Recorder.Event(object, eventtype, string(reason), message)
+}
+
+func (r *ServerReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }

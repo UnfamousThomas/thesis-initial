@@ -76,23 +76,94 @@ var _ = Describe("Fleet Controller", func() {
 				return
 			}
 			Expect(err).To(Succeed())
-			if controllerutil.ContainsFinalizer(fleet, FLEET_FINALIZER) {
-				controllerutil.RemoveFinalizer(fleet, FLEET_FINALIZER)
-				Expect(k8sClient.Update(ctx, fleet)).To(Succeed())
-			}
-			Expect(k8sClient.Get(ctx, namespacedName, fleet)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, fleet)).To(Succeed())
-
+			recorder := NewFakeRecorder()
+			reconciler := &FleetReconciler{
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: recorder,
+			}
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(err).To(Succeed())
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, namespacedName, fleet)
 				return errors.IsNotFound(err)
 			}, time.Second*10, time.Millisecond*500).Should(BeTrue())
+
+			hasFinalizerRemoveEvent := false
+			for _, event := range recorder.Events {
+				if event.Message == "Fleet finalizers removed" {
+					hasFinalizerRemoveEvent = true
+				}
+				break
+			}
+			Expect(hasFinalizerRemoveEvent).To(BeTrue())
 		})
 
+		It("Should emit the correct events", func() {
+			By("Setting up reconciler")
+			recorder := NewFakeRecorder()
+			reconciler := &FleetReconciler{
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: recorder,
+			}
+
+			By("Initial reconcile")
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Checking for finalizer event")
+			hasFleetFinalizersEvent := false
+
+			for _, event := range recorder.Events {
+				if event.Message == "Fleet finalizers added" {
+					hasFleetFinalizersEvent = true
+					break
+				}
+			}
+			Expect(hasFleetFinalizersEvent).To(BeTrue())
+
+			By("Checking for scaling up event")
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).ToNot(HaveOccurred())
+			hasScaleEvent := false
+			for _, event := range recorder.Events {
+				required := fmt.Sprintf("Scaled servers up to %d", basicFleetSpec.Scaling.Replicas)
+				if event.Message == required {
+					hasScaleEvent = true
+					break
+				}
+			}
+			Expect(hasScaleEvent).To(BeTrue())
+
+			By("Updating replica count")
+			var fleet networkv1alpha1.Fleet
+			err = k8sClient.Get(ctx, namespacedName, &fleet)
+			Expect(err).ToNot(HaveOccurred())
+			fleet.Spec.Scaling.Replicas = fleet.Spec.Scaling.Replicas - 1
+			err = k8sClient.Update(ctx, &fleet)
+			Expect(err).ToNot(HaveOccurred())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Checking for scaling down evenet")
+			hasScaleEvent = false
+			for _, event := range recorder.Events {
+				required := fmt.Sprintf("Scaled servers down to %d", fleet.Spec.Scaling.Replicas)
+				if event.Message == required {
+					hasScaleEvent = true
+					break
+				}
+			}
+			Expect(hasScaleEvent).To(BeTrue())
+		})
 		It("should delete all servers and remove the finalizer on fleet deletion", func() {
 			reconciler := &FleetReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 
 			// Initial reconciles to create servers
@@ -133,8 +204,9 @@ var _ = Describe("Fleet Controller", func() {
 
 		It("should add a finalizer if not present", func() {
 			reconciler := &FleetReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -147,8 +219,9 @@ var _ = Describe("Fleet Controller", func() {
 
 		It("should scale up servers to match the desired replicas", func() {
 			reconciler := &FleetReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -189,8 +262,9 @@ var _ = Describe("Fleet Controller", func() {
 
 		It("should delete all servers when fleet is deleted", func() {
 			reconciler := &FleetReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 
 			// Ensure the fleet is scaled first
@@ -233,8 +307,9 @@ var _ = Describe("Fleet Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &FleetReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 
 			By("Fail Get")
@@ -272,8 +347,9 @@ var _ = Describe("Fleet Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &FleetReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 
 			By("Fail Create")

@@ -51,8 +51,7 @@ endif
 OPERATOR_SDK_VERSION ?= v1.38.0
 # Image URL to use all building/pushing image targets
 IMG ?= ghcr.io/unfamousthomas/controller:latest
-SERVER_IMG ?= ghcr.io/unfamousthomas/image-example:latest
-SIDECAR_IMG = ?= ghcr.io/unfamousthomas/sidecar:latest
+SIDECAR_IMG ?= ghcr.io/unfamousthomas/sidecar:latest
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
@@ -146,7 +145,6 @@ run: manifests generate fmt vet ## Run a controller from your host.
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
 	$(CONTAINER_TOOL) build -t ${IMG} .
-	$(CONTAINER_TOOL) build -t ${SERVER_IMG} ../example-server/.
 	$(CONTAINER_TOOL) build -t ${SIDECAR_IMG} ../sidecar/.
 
 .PHONY: docker-push
@@ -202,7 +200,7 @@ undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.
 ##@ Dependencies
 
 ## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
+LOCALBIN ?= "$(shell pwd)/bin"
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 

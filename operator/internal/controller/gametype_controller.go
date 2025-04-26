@@ -20,7 +20,9 @@ import (
 	"context"
 	"github.com/go-logr/logr"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -33,7 +35,8 @@ import (
 // GameTypeReconciler reconciles a GameType object
 type GameTypeReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 const TypeFinalizer = "gametype.unfamousthomas.me/finalizer"
@@ -64,9 +67,11 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		logger.Info("Adding finalizer to gametype")
 		controllerutil.AddFinalizer(gametype, TypeFinalizer)
 		if err := r.Update(ctx, gametype); err != nil {
+			r.emitEventf(gametype, corev1.EventTypeWarning, utils.ReasonGametypeInitialized, "failed to add finalizers: %s", err)
 			logger.Error(err, "Failed to add finalizer to gametype")
 			return ctrl.Result{Requeue: true}, err
 		}
+		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeInitialized, "Added finalizers to game")
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -74,6 +79,7 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if gametype.DeletionTimestamp != nil || !gametype.GetDeletionTimestamp().IsZero() {
 		logger.Info("Handling deletion of gametype")
 		if err := r.handleDeletion(ctx, gametype, logger); err != nil {
+			r.emitEventf(gametype, corev1.EventTypeWarning, utils.ReasonGametypeInitialized, "failed to remove finalizers: %s", err)
 			logger.Error(err, "Failed to handle gametype deletion")
 			return ctrl.Result{Requeue: true}, err
 		}
@@ -104,6 +110,7 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 		if err != nil {
 			return ctrl.Result{Requeue: true}, err, true
 		}
+		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeInitialized, "Created initial fleet")
 		return ctrl.Result{Requeue: true}, nil, true
 	}
 	if len(fleets.Items) == 1 {
@@ -113,6 +120,7 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 			return ctrl.Result{Requeue: true}, err, true
 		}
 		if !networkv1alpha1.AreFleetsPodsEqual(&fleet.Spec, &gametype.Spec.FleetSpec) {
+			r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeSpecUpdated, "Creating new fleet")
 			res, err := r.handleCreation(ctx, gametype, logger)
 			return res, err, true
 		} else {
@@ -121,6 +129,7 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 				if err := r.Update(ctx, &fleet); err != nil {
 					return ctrl.Result{Requeue: true}, err, true
 				}
+				r.emitEventf(gametype, corev1.EventTypeNormal, utils.ReasonGametypeReplicasUpdated, "Scaling gametype to %d", fleet.Spec.Scaling.Replicas)
 			}
 		}
 	}
@@ -133,6 +142,7 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 				oldestFleet = &fleet
 			}
 		}
+		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeSpecUpdated, "Deleting extra fleet")
 
 		if oldestFleet != nil && oldestFleet.GetDeletionTimestamp() == nil {
 			if err := r.Delete(ctx, oldestFleet); err != nil {
@@ -161,6 +171,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 		}
 		for _, fleet := range fleets.Items {
 			if err := r.Delete(ctx, &fleet); err != nil {
+				r.emitEventf(gametype, corev1.EventTypeWarning, utils.ReasonGametypeServersDeleted, "Failed to delete fleet %s", fleet.Name)
 				return err
 			}
 		}
@@ -169,11 +180,11 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 			return err
 		}
 		if len(fleets.Items) == 0 {
-
 			controllerutil.RemoveFinalizer(gametype, TypeFinalizer)
 			if err := r.Update(ctx, gametype); err != nil {
 				return err
 			}
+			r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeServersDeleted, "Removed finalizer")
 		}
 	}
 	return nil
@@ -182,8 +193,17 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 func (r *GameTypeReconciler) handleCreation(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error) {
 	fleet := utils.GetFleetObjectForType(gametype)
 	if err := r.Create(ctx, fleet); err != nil {
+		r.emitEventf(gametype, corev1.EventTypeWarning, utils.ReasonGametypeReplicasUpdated, "Failed to create new fleet %s", err)
 		logger.Error(err, "failed to create a new fleet for gametype")
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
+}
+
+func (r *GameTypeReconciler) emitEvent(object runtime.Object, eventtype string, reason utils.EventReason, message string) {
+	r.Recorder.Event(object, eventtype, string(reason), message)
+}
+
+func (r *GameTypeReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }

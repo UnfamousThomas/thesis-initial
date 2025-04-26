@@ -69,23 +69,29 @@ var _ = Describe("GameType Controller", func() {
 		})
 
 		AfterEach(func() {
-			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-			_, err := reconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).To(BeNil())
 			var gametype networkv1alpha1.GameType
-
-			err = k8sClient.Get(ctx, typeNamespacedName, &gametype)
+			err := k8sClient.Get(ctx, typeNamespacedName, &gametype)
 			if err != nil && errors.IsNotFound(err) {
 				return
 			}
 			Expect(err).NotTo(HaveOccurred())
 
+			reconciler := &GameTypeReconciler{
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
+			}
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).To(BeNil())
+
 			By("Cleanup the specific resource instance GameType")
+			err = k8sClient.Get(ctx, typeNamespacedName, &gametype)
+			if err != nil && errors.IsNotFound(err) {
+				return
+			}
+			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, &gametype)).To(Succeed())
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -108,8 +114,9 @@ var _ = Describe("GameType Controller", func() {
 
 		It("Has correct finalizer", func() {
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -136,8 +143,9 @@ var _ = Describe("GameType Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &GameTypeReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			By("Fail get")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -158,8 +166,9 @@ var _ = Describe("GameType Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &GameTypeReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			By("Fail update")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -180,8 +189,9 @@ var _ = Describe("GameType Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &GameTypeReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			By("initial setup")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -220,8 +230,9 @@ var _ = Describe("GameType Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &GameTypeReconciler{
-				Client: fakeClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   fakeClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			By("Fail create")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -237,8 +248,9 @@ var _ = Describe("GameType Controller", func() {
 		It("Should create a fleet with the correct label", func() {
 			By("Setup reconciler")
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 
 			By("Trigger initial reconciliations")
@@ -257,8 +269,9 @@ var _ = Describe("GameType Controller", func() {
 		It("Replaces the fleet when FleetSpec changes", func() {
 			By("Initial reconciliation")
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(BeNil())
@@ -293,8 +306,9 @@ var _ = Describe("GameType Controller", func() {
 		It("Updates the replica count when changed", func() {
 			By("Initial reconciliation")
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(BeNil())
@@ -319,8 +333,9 @@ var _ = Describe("GameType Controller", func() {
 		It("Deletes the oldest fleet if multiple fleets exist", func() {
 			By("Initial reconciliation")
 			reconciler := &GameTypeReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Recorder: NewFakeRecorder(),
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(BeNil())
@@ -349,6 +364,113 @@ var _ = Describe("GameType Controller", func() {
 				_ = k8sClient.List(ctx, &fleetList, kclient.MatchingLabels{"type": resourceName})
 				return len(fleetList.Items)
 			}, time.Second*5, time.Millisecond*500).Should(BeNumerically("<=", 2))
+		})
+
+		It("Should emit the correct events", func() {
+			recorder := NewFakeRecorder()
+			fakeClient := FakeFailClient{
+				client:       k8sClient,
+				FailUpdate:   false,
+				FailCreate:   false,
+				FailDelete:   false,
+				FailGet:      false,
+				FailList:     false,
+				FailPatch:    false,
+				FailGetOnPod: false,
+			}
+			reconciler := &GameTypeReconciler{
+				Client:   fakeClient,
+				Scheme:   fakeClient.Scheme(),
+				Recorder: recorder,
+			}
+
+			By("Initial reconciliations")
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+
+			var gt networkv1alpha1.GameType
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &gt)).To(Succeed())
+
+			hasFinalizerAddingEvent := false
+			hasInitialFleetEvent := false
+
+			for _, event := range recorder.Events {
+				if event.Message == "Created initial fleet" {
+					hasInitialFleetEvent = true
+				}
+				if event.Message == "Added finalizers to game" {
+					hasFinalizerAddingEvent = true
+				}
+			}
+
+			Expect(hasFinalizerAddingEvent).To(BeTrue())
+			Expect(hasInitialFleetEvent).To(BeTrue())
+
+			By("Check if scaling event is emitted")
+			gt.Spec.Scaling.CurrentReplicas = gt.Spec.Scaling.CurrentReplicas + 1
+			Expect(k8sClient.Update(ctx, &gt)).To(Succeed())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &gt)).To(Succeed())
+
+			hasScalingEvent := false
+			requiredMsg := fmt.Sprintf("Scaling gametype to %d", gt.Spec.Scaling.CurrentReplicas)
+			for _, event := range recorder.Events {
+				if event.Message == requiredMsg {
+					hasScalingEvent = true
+					break
+				}
+			}
+			Expect(hasScalingEvent).To(BeTrue())
+
+			By("Check if new fleet event is emitted")
+			gt.Spec.FleetSpec.ServerSpec.Pod.Containers[0].Image = "another-image"
+			Expect(k8sClient.Update(ctx, &gt)).To(Succeed())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+			hasNewFleetEvent := false
+			for _, event := range recorder.Events {
+				if event.Message == "Creating new fleet" {
+					hasNewFleetEvent = true
+					break
+				}
+			}
+			Expect(hasNewFleetEvent).To(BeTrue())
+
+			By("Check if old fleet was deleted")
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+			hasOldFleetDeleteEvent := false
+			for _, event := range recorder.Events {
+				if event.Message == "Deleting extra fleet" {
+					hasOldFleetDeleteEvent = true
+					break
+				}
+			}
+			Expect(hasOldFleetDeleteEvent).To(BeTrue())
+
+			By("Delete gametype")
+			Expect(k8sClient.Delete(ctx, &gt)).To(Succeed())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(BeNil())
+
+			By("Check if deletion has correct events")
+			hasFinalizersRemovedEvent := false
+			for _, event := range recorder.Events {
+				if event.Message == "Removed finalizer" {
+					hasFinalizersRemovedEvent = true
+					break
+				}
+			}
+			Expect(hasFinalizersRemovedEvent).To(BeTrue())
 		})
 
 	})

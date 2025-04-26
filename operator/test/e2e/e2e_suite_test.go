@@ -29,7 +29,7 @@ import (
 )
 
 const projectimage = "example.com/loputoo:v0.0.1"
-const example_server_image = "example.com/example-server:v0.0.1"
+const example_server_image = "nginx:latest" //Just a random image to use as a "fake server"
 const sidecar_image = "ghcr.io/unfamousthomas/sidecar:latest"
 
 const serverName = "test-server"
@@ -64,10 +64,6 @@ var _ = BeforeSuite(func() {
 
 	By("loading sidecar image on Kind")
 	err = utils.LoadImageToKindClusterWithName(sidecar_image)
-	ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-	By("loading example server image on Kind")
-	err = utils.LoadImageToKindClusterWithName(example_server_image)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 	By("installing CRDs")

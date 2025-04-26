@@ -167,8 +167,9 @@ func main() {
 		}
 	}
 	if err = (&controller.FleetReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Recorder: mgr.GetEventRecorderFor("fleet"),
+		Scheme:   mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Fleet")
 		os.Exit(1)
@@ -180,16 +181,18 @@ func main() {
 		}
 	}
 	if err = (&controller.GameTypeReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("gametype"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GameType")
 		os.Exit(1)
 	}
 	if err = (&controller.GameAutoscalerReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Webhook: utils.ProductionWebhookRequest{},
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("gameautoscaler"),
+		Webhook:  utils.ProductionWebhookRequest{},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "GameAutoscaler")
 		os.Exit(1)

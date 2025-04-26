@@ -20,7 +20,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,8 +36,9 @@ import (
 // GameAutoscalerReconciler reconciles a GameAutoscaler object
 type GameAutoscalerReconciler struct {
 	client.Client
-	Scheme  *runtime.Scheme
-	Webhook utils.Webhook
+	Scheme   *runtime.Scheme
+	Webhook  utils.Webhook
+	Recorder record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=gameautoscalers,verbs=get;list;watch;create;update;patch;delete
@@ -62,38 +65,42 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		Namespace: autoscaler.Namespace,
 	}
 	if err := r.Get(ctx, namespacedGametype, gametype); err != nil {
+		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameAutoscalerInvalidServer, "Failed to find the gametype")
 		return ctrl.Result{Requeue: true}, err
 	}
 
 	if autoscaler.Spec.AutoscalePolicy.Type != networkv1alpha1.Webhook {
+		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameAutoscalerInvalidAutoscalePolicy,
+			"invalid game autoscaler policy type")
 		return ctrl.Result{}, fmt.Errorf("%s is not a valid policy type", autoscaler.Spec.AutoscalePolicy.Type)
 	}
 
 	result, err := r.Webhook.SendScaleWebhookRequest(autoscaler, gametype)
 	if err != nil {
+		r.emitEventf(autoscaler, corev1.EventTypeWarning, utils.ReasonGameautoscalerWebhook, "failed to send the webhook request: %v", err)
 		return ctrl.Result{RequeueAfter: time.Minute}, fmt.Errorf("failed to send scale webhook request: %w", err)
 	}
 
 	if autoscaler.Spec.Sync.Type != networkv1alpha1.FixedInterval {
+		r.emitEventf(autoscaler, corev1.EventTypeWarning, utils.ReasonGameAutoscalerInvalidSyncType, "%s is not a valid sync type", autoscaler.Spec.Sync.Type)
 		return ctrl.Result{}, fmt.Errorf("%s is not a valid sync type, currently only fixed interval is supported", autoscaler.Spec.Sync.Type)
 	}
 
-	secondsBetween := time.Second * time.Duration(autoscaler.Spec.Sync.FixedInterval)
-
 	if !result.Scale {
 		return ctrl.Result{
-			RequeueAfter: secondsBetween,
+			RequeueAfter: autoscaler.Spec.Sync.Time.Duration,
 		}, nil
 	}
 
 	gametype.Spec.Scaling.CurrentReplicas = result.DesiredReplicas
-
 	if err := r.Client.Update(ctx, gametype); err != nil {
+		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameautoscalerScale, "failed to update the gametype")
 		return ctrl.Result{}, fmt.Errorf("failed to update gametype with new replica count: %w", err)
 	}
+	r.emitEventf(autoscaler, corev1.EventTypeNormal, utils.ReasonGameautoscalerScale, "Scaling game to %d", result.DesiredReplicas)
 
 	return ctrl.Result{
-		RequeueAfter: secondsBetween,
+		RequeueAfter: autoscaler.Spec.Sync.Time.Duration,
 	}, nil
 }
 
@@ -102,4 +109,12 @@ func (r *GameAutoscalerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkv1alpha1.GameAutoscaler{}).
 		Complete(r)
+}
+
+func (r *GameAutoscalerReconciler) emitEvent(object runtime.Object, eventtype string, reason utils.EventReason, message string) {
+	r.Recorder.Event(object, eventtype, string(reason), message)
+}
+
+func (r *GameAutoscalerReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
+	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }

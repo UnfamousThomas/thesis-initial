@@ -31,6 +31,8 @@ spec:
               policy:
                 properties:
                   type:
+                    enum:
+                    - webhook
                     type: string
                   webhook:
                     properties:
@@ -60,12 +62,14 @@ spec:
                 type: object
               sync:
                 properties:
-                  fixedInterval:
-                    type: integer
+                  interval:
+                    type: string
                   type:
+                    enum:
+                    - fixedinterval
                     type: string
                 required:
-                - fixedInterval
+                - interval
                 - type
                 type: object
             required:

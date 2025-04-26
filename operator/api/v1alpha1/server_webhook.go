@@ -62,6 +62,12 @@ func (r *Server) ValidateCreate() (admission.Warnings, error) {
 	if len(r.Spec.Pod.Containers) < 1 {
 		return nil, errors.New("at least 1 container required")
 	}
+
+	for _, container := range r.Spec.Pod.Containers {
+		if container.Image == "" {
+			return nil, errors.New("image is required for every container")
+		}
+	}
 	return nil, nil
 }
 
@@ -71,7 +77,7 @@ func (r *Server) ValidateUpdate(old runtime.Object) (admission.Warnings, error) 
 	if !ok {
 		return nil, fmt.Errorf("expected old object to be *Server, got %T", old)
 	}
-	if arePodSpecsEqual(oldServer.Spec.Pod, r.Spec.Pod) {
+	if !arePodSpecsEqual(oldServer.Spec.Pod, r.Spec.Pod) {
 		return nil, errors.New("updating a servers pod spec is not allowed, please remake the server")
 	}
 

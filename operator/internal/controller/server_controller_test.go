@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,10 +57,6 @@ func (p TestChecker) IsDeletionAllowed(server *networkv1alpha1.Server, pod *core
 	return p.deleteAllowed[server.Name], nil
 }
 
-var checker = TestChecker{
-	deleteAllowed: make(map[string]bool),
-}
-
 var _ = Describe("ServerReconciler", func() {
 	Context("Reconcile logic", func() {
 		const (
@@ -87,8 +84,6 @@ var _ = Describe("ServerReconciler", func() {
 				},
 				Spec: basicServerSpec,
 			}
-			//Do not allow deletions
-			checker.deleteAllowed[server.Name] = false
 			err := k8sClient.Create(ctx, server)
 			Expect(err).To(Succeed())
 		})
@@ -101,10 +96,15 @@ var _ = Describe("ServerReconciler", func() {
 					Namespace: ServerNamespace,
 				},
 			}
+			fakeRecorder := NewFakeRecorder()
+			checker := TestChecker{
+				deleteAllowed: make(map[string]bool),
+			}
 			reconciler := &ServerReconciler{
 				Client:          k8sClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
+				Recorder:        fakeRecorder,
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).To(BeNil())
@@ -117,9 +117,29 @@ var _ = Describe("ServerReconciler", func() {
 				//This should allow due to delete not being allowed
 				_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 				Expect(err).To(Not(BeNil()))
+
+				foundNotAllowed := false
+				for _, event := range fakeRecorder.Events {
+					if event.Message == "Server did not respond with allowed" {
+						foundNotAllowed = true
+						break
+					}
+				}
+				Expect(foundNotAllowed).To(BeTrue())
+
 				checker.deleteAllowed[server.Name] = true
 				_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 				Expect(err).To(BeNil())
+
+				By("Checking if finalizer event is logged")
+				containsEvent := false
+				for _, event := range fakeRecorder.Events {
+					if event.Message == "Finalizer removed" {
+						containsEvent = true
+					}
+				}
+
+				Expect(containsEvent).To(BeTrue())
 
 				// Wait until the resource is deleted
 				Eventually(func() bool {
@@ -130,10 +150,15 @@ var _ = Describe("ServerReconciler", func() {
 		})
 
 		It("should add a finalizer if not present", func() {
+			recorder := NewFakeRecorder()
+			checker := TestChecker{
+				deleteAllowed: make(map[string]bool),
+			}
 			reconciler := &ServerReconciler{
 				Client:          k8sClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
+				Recorder:        recorder,
 			}
 			By("Reconciling the resource")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -145,13 +170,28 @@ var _ = Describe("ServerReconciler", func() {
 			Expect(err).To(BeNil())
 			Expect(k8sClient.Get(ctx, namespacedName, server)).To(Succeed())
 			Expect(controllerutil.ContainsFinalizer(server, SERVER_FINALIZER)).To(BeTrue())
+
+			By("Checking if finalizer event was emitted")
+			containsEvent := false
+			for _, event := range recorder.Events {
+				if event.Message == "Finalizer added" {
+					containsEvent = true
+					break
+				}
+			}
+			Expect(containsEvent).To(BeTrue())
 		})
 
 		It("should create a Pod for the Server", func() {
+			recorder := NewFakeRecorder()
+			checker := TestChecker{
+				deleteAllowed: make(map[string]bool),
+			}
 			reconciler := &ServerReconciler{
 				Client:          k8sClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
+				Recorder:        recorder,
 			}
 			By("Reconciling the resource")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -166,37 +206,132 @@ var _ = Describe("ServerReconciler", func() {
 				Name:      ServerName + "-pod",
 				Namespace: ServerNamespace,
 			}, pod)).To(Succeed())
+
+			By("Validating that events are correct")
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: namespacedName})
+			Expect(err).NotTo(HaveOccurred())
+			containsPodCreated := false
+			containsPodFinalizer := false
+			containsServerFinalizer := false
+			for _, event := range recorder.Events {
+				GinkgoLogr.Info(event.Message)
+				if event.Message == "Pod created successfully" {
+					containsPodCreated = true
+				}
+				_, podOk := event.Object.(*corev1.Pod)
+
+				if podOk && event.Message == "Pod finalizer added" {
+					containsPodFinalizer = true
+				}
+
+				_, serverOk := event.Object.(*networkv1alpha1.Server)
+				if serverOk && event.Message == "Pod finalizer added" {
+					containsServerFinalizer = true
+				}
+			}
+
+			Expect(containsPodCreated).To(BeTrue())
+			Expect(containsPodFinalizer).To(BeTrue())
+			Expect(containsServerFinalizer).To(BeTrue())
+
 		})
 
 		It("should handle deletion of the Server and remove the Pod", func() {
+			fakeRecorder := NewFakeRecorder()
+			checker := TestChecker{
+				deleteAllowed: make(map[string]bool),
+			}
 			reconciler := &ServerReconciler{
 				Client:          k8sClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
+				Recorder:        fakeRecorder,
 			}
+			By("Reconcile the basic server")
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).NotTo(HaveOccurred())
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).NotTo(HaveOccurred())
+
+			//Make sure pod exists
+			pod := &corev1.Pod{}
+			err = k8sClient.Get(ctx, types.NamespacedName{
+				Name:      ServerName + "-pod",
+				Namespace: ServerNamespace,
+			}, pod)
+			Expect(err).NotTo(HaveOccurred())
 			By("Deleting the Server resource")
 			server := &networkv1alpha1.Server{}
 			Expect(k8sClient.Get(ctx, namespacedName, server)).To(Succeed())
 			Expect(k8sClient.Delete(ctx, server)).To(Succeed())
 
 			By("Reconciling the deletion")
-			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+			Expect(err).To(HaveOccurred())
+
+			By("Reconciling the deletion with allowed")
+			checker.deleteAllowed[server.Name] = true
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Validating the Pod is deleted")
-			pod := &corev1.Pod{}
+			pod = &corev1.Pod{}
 			err = k8sClient.Get(ctx, types.NamespacedName{
 				Name:      ServerName + "-pod",
 				Namespace: ServerNamespace,
 			}, pod)
 			Expect(errors.IsNotFound(err)).To(BeTrue())
 
+			GinkgoLogr.Info("Events in recorder", "amount", len(fakeRecorder.Events), "events", fakeRecorder.Events)
+			for _, event := range fakeRecorder.Events {
+				GinkgoLogr.Info("Event", "message", event.Message)
+			}
+
+			By("Check if has pod deletion event")
+			hasEvent := false
+			for _, event := range fakeRecorder.Events {
+				if event.Message == "Pod successfully deleted during finalization" {
+					hasEvent = true
+					break
+				}
+			}
+			Expect(hasEvent).To(BeTrue())
+
 			By("Validating the finalizer is removed")
 			err = k8sClient.Get(ctx, namespacedName, server)
 			Expect(errors.IsNotFound(err)).To(BeTrue())
+
+			By("Check if server has finalizer removal event")
+			hasGlobalFinalizerRemoved := false
+			hasPodFinalizerRemoved := false
+			hasServerFinalizerRemoved := false
+			for _, event := range fakeRecorder.Events {
+				if event.Message == "Finalizer removed" {
+					hasGlobalFinalizerRemoved = true
+				}
+				_, isPod := event.Object.(*corev1.Pod)
+				if isPod && event.Message == "Pod finalizer removed" {
+					hasPodFinalizerRemoved = true
+				}
+
+				_, isServer := event.Object.(*networkv1alpha1.Server)
+				if isServer && event.Message == "Pod finalizer removed" {
+					hasServerFinalizerRemoved = true
+				}
+
+			}
+			Expect(hasPodFinalizerRemoved).To(BeTrue())
+			Expect(hasServerFinalizerRemoved).To(BeTrue())
+			Expect(hasGlobalFinalizerRemoved).To(BeTrue())
 		})
 
 		It("Should return error on get fail", func() {
+			checker := TestChecker{
+				deleteAllowed: make(map[string]bool),
+			}
 			fakeClient := FakeFailClient{
 				client:     k8sClient,
 				FailUpdate: false,
@@ -211,6 +346,7 @@ var _ = Describe("ServerReconciler", func() {
 				Client:          fakeClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
+				Recorder:        NewFakeRecorder(),
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -230,16 +366,27 @@ var _ = Describe("ServerReconciler", func() {
 				FailPatch:    false,
 				FailGetOnPod: false,
 			}
-
+			checker := TestChecker{
+				deleteAllowed: make(map[string]bool),
+			}
+			recorder := NewFakeRecorder()
 			reconciler := &ServerReconciler{
 				Client:          fakeClient,
 				Scheme:          k8sClient.Scheme(),
 				DeletionAllowed: checker,
+				Recorder:        recorder,
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).ToNot(BeNil())
-
+			failUpdateEvent := false
+			for _, event := range recorder.Events {
+				if strings.HasPrefix(event.Message, "failed to update server") {
+					failUpdateEvent = true
+					break
+				}
+			}
+			Expect(failUpdateEvent).To(BeTrue())
 			By("Second update fail")
 			fakeClient.FailUpdate = false
 			reconciler.Client = fakeClient
