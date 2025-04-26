@@ -50,8 +50,12 @@ func (t *TestWebhook) SendScaleWebhookRequest(autoscaler *networkv1alpha1.GameAu
 
 var duration = metav1.Duration{Duration: 5 * time.Second}
 var path = "/scale"
+
+const resourceName = "test-resource"
+const namespace = "default"
+
 var basicGameautoscaler = networkv1alpha1.GameAutoscalerSpec{
-	GameName: "some-random-game",
+	GameName: resourceName,
 	AutoscalePolicy: networkv1alpha1.AutoscalePolicy{
 		Type: networkv1alpha1.Webhook,
 		WebhookAutoscalerSpec: networkv1alpha1.WebhookAutoscalerSpec{
@@ -72,13 +76,6 @@ var basicGameautoscaler = networkv1alpha1.GameAutoscalerSpec{
 var _ = Describe("GameAutoscaler Controller", func() {
 
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
-		const namespace = "default"
-		hook := &TestWebhook{
-			Scale:    false,
-			Replicas: 1,
-			Error:    false,
-		}
 
 		ctx := context.Background()
 
@@ -87,7 +84,7 @@ var _ = Describe("GameAutoscaler Controller", func() {
 			Namespace: namespace,
 		}
 		gameTypeNamespacedName := types.NamespacedName{
-			Name:      "some-random-game",
+			Name:      resourceName,
 			Namespace: namespace,
 		}
 
@@ -109,7 +106,7 @@ var _ = Describe("GameAutoscaler Controller", func() {
 			if err != nil && errors.IsNotFound(err) {
 				resource := &networkv1alpha1.GameType{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      "some-random-game",
+						Name:      resourceName,
 						Namespace: namespace,
 					},
 					Spec: basicGametypeSpec,
@@ -190,6 +187,11 @@ var _ = Describe("GameAutoscaler Controller", func() {
 
 		It("should successfully reconcile the gameautoscaler", func() {
 			By("create the reconciler for gameautoscaler")
+			hook := &TestWebhook{
+				Scale:    false,
+				Replicas: 1,
+				Error:    false,
+			}
 			controllerReconciler := &GameAutoscalerReconciler{
 				Client:   k8sClient,
 				Scheme:   k8sClient.Scheme(),
@@ -226,6 +228,11 @@ var _ = Describe("GameAutoscaler Controller", func() {
 
 		It("Reconcile with scaling", func() {
 			By("Setup reconciler")
+			hook := &TestWebhook{
+				Scale:    false,
+				Replicas: 1,
+				Error:    false,
+			}
 			controllerReconciler := &GameAutoscalerReconciler{
 				Client:   k8sClient,
 				Scheme:   k8sClient.Scheme(),
@@ -250,6 +257,11 @@ var _ = Describe("GameAutoscaler Controller", func() {
 
 		It("Reconcile with invalid types", func() {
 			By("Setup reconciler")
+			hook := &TestWebhook{
+				Scale:    false,
+				Replicas: 1,
+				Error:    false,
+			}
 			controllerReconciler := &GameAutoscalerReconciler{
 				Client:   k8sClient,
 				Scheme:   k8sClient.Scheme(),
@@ -263,7 +275,7 @@ var _ = Describe("GameAutoscaler Controller", func() {
 					Namespace: namespace,
 				}}
 
-			By("Reconcile with invalid sync type")
+			By("Reconcile")
 			err := k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
 			Expect(err).To(BeNil())
 
@@ -300,6 +312,11 @@ var _ = Describe("GameAutoscaler Controller", func() {
 				FailPatch:    false,
 				FailGetOnPod: false,
 			}
+			hook := &TestWebhook{
+				Scale:    false,
+				Replicas: 1,
+				Error:    false,
+			}
 			controllerReconciler := &GameAutoscalerReconciler{
 				Client:   fakeClient,
 				Scheme:   fakeClient.Scheme(),
@@ -320,13 +337,69 @@ var _ = Describe("GameAutoscaler Controller", func() {
 		})
 
 		It("Should emit the correct events", func() {
-			//recorder := NewFakeRecorder()
-			//controllerReconciler := &GameAutoscalerReconciler{
-			//	Client:   fakeClient,
-			//	Scheme:   fakeClient.Scheme(),
-			//	Webhook:  hook,
-			//	Recorder: recorder,
-			//}
+			recorder := NewFakeRecorder()
+
+			gameautoscaler := &networkv1alpha1.GameAutoscaler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: namespace,
+				}}
+
+			hook := &TestWebhook{
+				Scale:    false,
+				Replicas: 1,
+				Error:    false,
+			}
+			controllerReconciler := &GameAutoscalerReconciler{
+				Client:   k8sClient,
+				Scheme:   k8sClient.Scheme(),
+				Webhook:  hook,
+				Recorder: recorder,
+			}
+
+			originalGametype := resourceName
+			By("Update to invalid gamename")
+			err := k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
+			Expect(err).To(BeNil())
+			gameautoscaler.Spec.GameName = originalGametype + "-1"
+			err = k8sClient.Update(ctx, gameautoscaler)
+			Expect(err).To(BeNil())
+
+			By("Reconcile after update")
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).ToNot(BeNil())
+			By("Check for fail to find gametype event")
+			hasGametypeErrorEvent := false
+			for _, event := range recorder.Events {
+				if event.Message == "Failed to find the gametype" {
+					hasGametypeErrorEvent = true
+					break
+				}
+			}
+			Expect(hasGametypeErrorEvent).To(BeTrue())
+
+			By("Reset game name")
+			gameautoscaler.Spec.GameName = originalGametype
+			err = k8sClient.Update(ctx, gameautoscaler)
+			Expect(err).To(BeNil())
+			err = k8sClient.Get(ctx, autoscalerNamespacedName, gameautoscaler)
+			Expect(err).To(BeNil())
+
+			By("Check if scale event is emitted")
+			hook.Scale = true
+			hook.Replicas = 5
+			hook.Error = false
+			controllerReconciler.Webhook = hook
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: autoscalerNamespacedName})
+			Expect(err).To(BeNil())
+			hasScaleEvent := false
+			for _, event := range recorder.Events {
+				if event.Message == "Scaling game to 5" {
+					hasScaleEvent = true
+					break
+				}
+			}
+			Expect(hasScaleEvent).To(BeTrue())
 		})
 	})
 })

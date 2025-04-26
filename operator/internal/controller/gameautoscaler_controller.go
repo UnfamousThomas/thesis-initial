@@ -65,13 +65,13 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		Namespace: autoscaler.Namespace,
 	}
 	if err := r.Get(ctx, namespacedGametype, gametype); err != nil {
-		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameAutoscalerInvalidServer, "failed to find the gametype")
+		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameAutoscalerInvalidServer, "Failed to find the gametype")
 		return ctrl.Result{Requeue: true}, err
 	}
 
 	if autoscaler.Spec.AutoscalePolicy.Type != networkv1alpha1.Webhook {
 		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameAutoscalerInvalidAutoscalePolicy,
-			"invalid game autoscaler type")
+			"invalid game autoscaler policy type")
 		return ctrl.Result{}, fmt.Errorf("%s is not a valid policy type", autoscaler.Spec.AutoscalePolicy.Type)
 	}
 
@@ -93,12 +93,11 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	gametype.Spec.Scaling.CurrentReplicas = result.DesiredReplicas
-	r.emitEventf(autoscaler, corev1.EventTypeNormal, utils.ReasonGameautoscalerScale, "Scaling game to %d", result.DesiredReplicas)
-
 	if err := r.Client.Update(ctx, gametype); err != nil {
 		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameautoscalerScale, "failed to update the gametype")
 		return ctrl.Result{}, fmt.Errorf("failed to update gametype with new replica count: %w", err)
 	}
+	r.emitEventf(autoscaler, corev1.EventTypeNormal, utils.ReasonGameautoscalerScale, "Scaling game to %d", result.DesiredReplicas)
 
 	return ctrl.Result{
 		RequeueAfter: autoscaler.Spec.Sync.Time.Duration,
