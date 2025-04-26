@@ -318,5 +318,15 @@ var _ = Describe("GameAutoscaler Controller", func() {
 			})
 			Expect(err).To(Not(BeNil()))
 		})
+
+		It("Should emit the correct events", func() {
+			//recorder := NewFakeRecorder()
+			//controllerReconciler := &GameAutoscalerReconciler{
+			//	Client:   fakeClient,
+			//	Scheme:   fakeClient.Scheme(),
+			//	Webhook:  hook,
+			//	Recorder: recorder,
+			//}
+		})
 	})
 })

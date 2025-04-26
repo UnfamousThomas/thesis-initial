@@ -13,12 +13,14 @@ func addContainer(spec *corev1.PodSpec, container corev1.Container) *corev1.PodS
 	return spec
 }
 
-func getPodSpec(server *networkv1alpha1.Server) *corev1.PodSpec {
+func getPodSpec(server *networkv1alpha1.Server) (*corev1.PodSpec, bool) {
 	spec := server.Spec
 	sidecarImage := os.Getenv("SIDECAR_IMAGE")
+	defaultImage := false
 	if sidecarImage == "" {
-		fmt.Println("SIDECAR_IMAGE env var not set, defaulting.")
 		sidecarImage = "ghcr.io/unfamousthomas/sidecar:latest"
+		fmt.Println("SIDECAR_IMAGE env var not set, defaulting to " + sidecarImage)
+		defaultImage = true
 	}
 	pod := addContainer(&spec.Pod, corev1.Container{
 		Name:  "loputoo-sidecar",
@@ -77,14 +79,15 @@ func getPodSpec(server *networkv1alpha1.Server) *corev1.PodSpec {
 		Name: os.Getenv("IMAGE_PULL_SECRET_NAME"),
 	})
 
-	return pod
+	return pod, defaultImage
 }
 
-func GetNewPod(server *networkv1alpha1.Server, namespace string) *corev1.Pod {
+func GetNewPod(server *networkv1alpha1.Server, namespace string) (*corev1.Pod, bool) {
 	labels := server.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)
 	}
+	spec, defaultImage := getPodSpec(server)
 	labels["server"] = server.Name
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -95,7 +98,7 @@ func GetNewPod(server *networkv1alpha1.Server, namespace string) *corev1.Pod {
 				*metav1.NewControllerRef(server, networkv1alpha1.GroupVersion.WithKind("Server")),
 			},
 		},
-		Spec: *getPodSpec(server),
+		Spec: *spec,
 	}
-	return pod
+	return pod, defaultImage
 }

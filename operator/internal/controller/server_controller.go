@@ -137,7 +137,10 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 	}
 
 	if err != nil { // Pod does not exist
-		newPod := utils.GetNewPod(server, server.Namespace)
+		newPod, defaultImg := utils.GetNewPod(server, server.Namespace)
+		if defaultImg {
+			r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerInitialized, "Setting up sidecar with default image")
+		}
 		err = controllerutil.SetControllerReference(server, newPod, r.Scheme)
 		if err != nil {
 			r.emitEventf(server, corev1.EventTypeWarning, utils.ReasonServerInitialized, "failed to set pod owner reference: %s", err)

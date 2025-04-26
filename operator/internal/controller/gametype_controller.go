@@ -71,7 +71,7 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			logger.Error(err, "Failed to add finalizer to gametype")
 			return ctrl.Result{Requeue: true}, err
 		}
-		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeInitialized, "added finalizers")
+		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeInitialized, "Added finalizers to game")
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -110,7 +110,7 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 		if err != nil {
 			return ctrl.Result{Requeue: true}, err, true
 		}
-		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeInitialized, "Added finalizer")
+		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeInitialized, "Created initial fleet")
 		return ctrl.Result{Requeue: true}, nil, true
 	}
 	if len(fleets.Items) == 1 {
@@ -129,7 +129,7 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 				if err := r.Update(ctx, &fleet); err != nil {
 					return ctrl.Result{Requeue: true}, err, true
 				}
-				r.emitEventf(gametype, corev1.EventTypeNormal, utils.ReasonGametypeReplicasUpdated, "Scaling fleet to %d", fleet.Spec.Scaling.Replicas)
+				r.emitEventf(gametype, corev1.EventTypeNormal, utils.ReasonGametypeReplicasUpdated, "Scaling gametype to %d", fleet.Spec.Scaling.Replicas)
 			}
 		}
 	}
@@ -171,6 +171,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 		}
 		for _, fleet := range fleets.Items {
 			if err := r.Delete(ctx, &fleet); err != nil {
+				r.emitEventf(gametype, corev1.EventTypeWarning, utils.ReasonGametypeServersDeleted, "Failed to delete fleet %s", fleet.Name)
 				return err
 			}
 		}
@@ -192,6 +193,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 func (r *GameTypeReconciler) handleCreation(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error) {
 	fleet := utils.GetFleetObjectForType(gametype)
 	if err := r.Create(ctx, fleet); err != nil {
+		r.emitEventf(gametype, corev1.EventTypeWarning, utils.ReasonGametypeReplicasUpdated, "Failed to create new fleet %s", err)
 		logger.Error(err, "failed to create a new fleet for gametype")
 		return ctrl.Result{}, err
 	}
