@@ -1,10 +1,3 @@
-## Project layout
-
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
-
 # Welcome to the Thesis Documentation
 
 This project began as a solution to a problem I encountered during my Computer Science Bachelor's thesis.  

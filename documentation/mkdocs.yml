@@ -11,3 +11,4 @@ nav:
   - Autoscaler: autoscaler.md
   - Sidecar: sidecar.md
   - Service: service.md
+  - Getting Started: started.md
