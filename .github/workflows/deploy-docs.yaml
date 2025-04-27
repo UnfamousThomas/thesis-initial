@@ -5,6 +5,7 @@ on:
       - master
     paths:
       - 'documentation/**'
+      - '.github/workflows/deploy-docs.yaml'
   workflow_dispatch:
 permissions:
   contents: write
