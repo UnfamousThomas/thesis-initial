@@ -4,7 +4,7 @@ on:
   pull_request:
     paths-ignore:
       - 'operator/**'
-      - '.github/workflows/test.yml' # re-run if workflow changes
+      - '.github/workflows/run-operator-unit-tests.yml' # re-run if workflow changes
 
 jobs:
   unit-test:
