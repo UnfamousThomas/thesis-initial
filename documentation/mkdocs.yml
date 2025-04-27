@@ -2,3 +2,12 @@ site_name: Thesis Documentation
 site_url: https://unfamousthomas.github.io/thesis
 theme:
   name: material
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Server: server.md
+  - Fleet: fleet.md
+  - GameType: gametype.md
+  - Autoscaler: autoscaler.md
+  - Sidecar: sidecar.md
+  - Service: service.md
