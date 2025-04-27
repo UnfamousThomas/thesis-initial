@@ -63,6 +63,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#fleet" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -263,6 +268,21 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Fleet
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -275,6 +295,61 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manifest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scaling-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaling Behaviour
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#default-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default Behaviour
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spec-inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Spec Inheritance
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -385,6 +460,52 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manifest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#scaling-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      Scaling Behaviour
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#default-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      Default Behaviour
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spec-inheritance" class="md-nav__link">
+    <span class="md-ellipsis">
+      Spec Inheritance
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -400,9 +521,53 @@
 
 
 
-  <h1>Fleet</h1>
-
-
+<h1 id="fleet">Fleet</h1>
+<p>A <strong>Fleet</strong> represents a group of servers managed together. Fleets simplify the process of scaling the number of servers up or down, based on the needs of the game or application. They act as a container for managing the lifecycle and scaling rules of multiple servers.</p>
+<h3 id="manifest">Manifest</h3>
+<p>The manifest for a <strong>Fleet</strong> object looks like this:</p>
+<pre><code class="language-yaml">apiVersion: network.unfamousthomas.me/v1alpha1
+kind: Fleet
+metadata:
+  name: fleet-sample
+spec:
+  scaling:
+    replicas: 3 # The number of servers that should exist in this fleet
+    prioritizeAllowed: true # Whether to delete allowed servers first during downscaling
+    agePriority: oldest_first # Whether to delete oldest servers first or newest (newest_first)
+  spec: # The spec for the servers in this fleet (same as a Server object spec)
+    timeout: 5m
+    allowForceDelete: false
+    pod:
+      containers:
+        - name: example-container
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          resources:
+            limits:
+              cpu: &quot;500m&quot;
+              memory: &quot;256Mi&quot;
+            requests:
+              cpu: &quot;250m&quot;
+              memory: &quot;128Mi&quot;
+</code></pre>
+<h3 id="scaling-behaviour">Scaling Behaviour</h3>
+<ul>
+<li><strong>Replicas</strong>: The <code>replicas</code> field defines how many server instances should exist in the fleet at any time. This field ensures that the fleet always maintains the desired number of servers.</li>
+<li><strong>PrioritizeAllowed</strong>: The <code>prioritizeAllowed</code> field determines whether servers that have deletion allowed should be deleted first during a downscale event. If <code>true</code>, servers that are marked as allowed for deletion will be removed first to maintain the specified number of replicas.</li>
+<li><strong>AgePriority</strong>: The <code>agePriority</code> fields determines the order in which servers are deleted when downscaling. By default, <code>oldest_first</code> will remove the oldest servers first. If set to newest_first, the most recently created servers will be deleted first. You can add additional priorities here as needed.  </li>
+</ul>
+<p>Simply put, this just acts as a simple container for multiple servers.</p>
+<h3 id="default-behaviour">Default Behaviour</h3>
+<ul>
+<li><strong>Replicas</strong>: If not specified, the controller will default to creating 1 replica of the server</li>
+<li><strong>PrioritizeAllowed</strong>: If not specified, it defaults to <code>true</code>, meaning the controller will prioritize deleting allowed servers during downscaling.</li>
+<li><strong>AgePriority</strong>: If not specified, the controller will default to <code>oldest_first</code>, ensuring that the oldest servers are removed first during downscaling.</li>
+</ul>
+<h3 id="spec-inheritance">Spec Inheritance</h3>
+<p>The <code>spec.spec</code> field inside the Fleet manifest is identical to the spec used in the Server object. This means that each server created by a fleet will inherit its configuration from this spec, including container settings, resource requests, and limits.</p>
+<p>For more information on the Server spec, see the <a href="../server/">Server</a> documentation.</p>
 
 
 

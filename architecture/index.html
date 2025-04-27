@@ -63,6 +63,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#architecture" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -219,6 +224,21 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -231,6 +251,67 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#custom-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Resources
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resource-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource Overview
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resource-relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource Relationships
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-deletion-blocking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Server Deletion Blocking
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -385,6 +466,58 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#custom-resources" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Resources
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Resources">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resource-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource Overview
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resource-relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      Resource Relationships
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-deletion-blocking" class="md-nav__link">
+    <span class="md-ellipsis">
+      Server Deletion Blocking
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -400,9 +533,44 @@
 
 
 
-  <h1>Architecture</h1>
-
-
+<h1 id="architecture">Architecture</h1>
+<p>This page provides an overview of the general architecture of the project, explaining how the custom resources work together to manage game servers in a Kubernetes environment.</p>
+<h2 id="custom-resources">Custom Resources</h2>
+<p>The project implements four main custom resources to manage game servers:</p>
+<ul>
+<li><a href="../server/">Server</a></li>
+<li><a href="../fleet/">Fleet</a></li>
+<li><a href="../gametype/">GameType</a></li>
+<li><a href="../autoscaler/">GameAutoscaler</a></li>
+</ul>
+<h3 id="resource-overview">Resource Overview</h3>
+<ul>
+<li><strong>Server</strong>: A <strong>Server</strong> is a wrapper for a Kubernetes pod with added logic, typically through a <a href="../sidecar/">sidecar</a>.</li>
+<li><strong>Fleet</strong>: A <strong>Fleet</strong> manages the creation and deletion of multiple servers, ensuring scaling and resource management for a group of servers.</li>
+<li><strong>GameType</strong>: A <strong>GameType</strong> manages one or two fleets and is responsible for updating the configuration of servers, enabling gradual upgrades.</li>
+<li><strong>GameAutoscaler</strong>: A <strong>GameAutoscaler</strong> triggers scaling actions based on external logic, calling a webhook implemented by the user to adjust the replica count of the <strong>GameType</strong>.</li>
+</ul>
+<h2 id="resource-relationships">Resource Relationships</h2>
+<p>The resources in this project are closely interconnected. Here's how they relate:</p>
+<ul>
+<li><strong>GameAutoscaler</strong> scales a <strong>GameType</strong> based on external inputs (via webhook).</li>
+<li><strong>GameType</strong> creates and updates <strong>Fleets</strong> based on its configuration.</li>
+<li><strong>Fleets</strong> manage the creation and deletion of <strong>Servers</strong>.</li>
+<li><strong>Servers</strong> manage individual <strong>Pods</strong>.</li>
+</ul>
+<p>This relationship can be visualized in the following diagram:</p>
+<p><img alt="Object Relations" src="../imgs/object_relations.png" title="Object Relationships" /></p>
+<h2 id="server-deletion-blocking">Server Deletion Blocking</h2>
+<p>The blocking of server deletion is a critical aspect of this system. It ensures that a server is not deleted until all conditions for safe deletion are met.</p>
+<p>This is achieved through the use of <strong>finalizers</strong>. When a new <strong>Server</strong> object is created, the controller automatically adds a finalizer. The finalizer ensures that the server cannot be deleted until the associated sidecar reports that deletion is allowed.</p>
+<p>The process is as follows:</p>
+<ol>
+<li>A finalizer is added to the <strong>Server</strong> object upon creation.</li>
+<li>The <strong>Sidecar</strong> (detailed in <a href="../sidecar/">Sidecar</a>) monitors the server and reports when deletion is allowed.</li>
+<li>Only once the sidecar confirms that deletion is allowed will the finalizer be removed, and the <strong>Server</strong> can be deleted.</li>
+</ol>
+<p>The flow of communication between components can be seen in the following diagram:</p>
+<p><img alt="General Communication" src="../imgs/general_communication.png" title="General Communication" /></p>
 
 
 

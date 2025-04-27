@@ -63,6 +63,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#server" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -241,6 +246,21 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Server
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -253,6 +273,61 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manifest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#special-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Special Environment Variables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Server Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips-and-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tips and Considerations
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -385,6 +460,52 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manifest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#special-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Special Environment Variables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      Server Management
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips-and-considerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Tips and Considerations
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -400,9 +521,60 @@
 
 
 
-  <h1>Server</h1>
-
-
+<h1 id="server">Server</h1>
+<p>A <strong>server</strong> is the core resource in this project, serving as the foundation for managing game server instances in Kubernetes.</p>
+<p>It has a <strong>1-to-1 relationship with a pod</strong>, meaning each server corresponds to a single pod. The server acts as a simple wrapper around the pod, with an additional <strong>sidecar</strong> inserted to manage specialized functionality (such as lifecycle control and custom metrics). For more information about the sidecar, please see the <a href="../sidecar/">Sidecar</a> documentation.</p>
+<h3 id="manifest">Manifest</h3>
+<p>The manifest for a <strong>Server</strong> object looks like this:</p>
+<pre><code class="language-yaml">apiVersion: network.unfamousthomas.me/v1alpha1
+kind: Server
+metadata:
+  labels:
+    someLabel: example-label
+  name: server-sample
+spec:
+  timeout: 5m # Time the controller waits before allowing a forced deletion of the server
+  allowForceDelete: false # Determines if the controller can forcefully delete the server without permission
+  pod:
+    containers:
+      - name: example-container
+        image: nginx:latest
+        ports:
+          - containerPort: 80
+            protocol: TCP
+        resources:
+          limits:
+            cpu: &quot;500m&quot;
+            memory: &quot;256Mi&quot;
+          requests:
+            cpu: &quot;250m&quot;
+            memory: &quot;128Mi&quot;
+</code></pre>
+<p>The <code>spec.pod</code> sub-object follows the typical Kubernetes pod spec format, allowing you to define multiple containers, volumes, and other pod configurations as necessary.</p>
+<h3 id="special-environment-variables">Special Environment Variables</h3>
+<p>For ease of development and to provide useful context inside containers, the following environment variables are automatically introduced to all containers:</p>
+<ul>
+<li><code>CONTAINER_IMAGE</code> - The image of the current container</li>
+<li><code>SERVER_NAME</code> - The name of the server object</li>
+<li><code>FLEET_NAME</code> - The name of the parent fleet object (if applicable)</li>
+<li><code>GAME_NAME</code> - The name of the parent game object (if applicable)</li>
+<li><code>POD_IP</code> - The IP address of the pod</li>
+<li><code>NODE_NAME</code> - The name of the node where the pod is running</li>
+</ul>
+<h3 id="server-management">Server Management</h3>
+<ul>
+<li>
+<p><strong>Duration</strong>: The <code>duration</code> field determines how long the controller will wait before permitting a forced deletion of the server. This allows you to implement a delay before the server is deleted to prevent premature shutdowns.</p>
+</li>
+<li>
+<p><strong>AllowForceDelete</strong>: The <code>allowForceDelete</code> field, when set to <code>true</code>, instructs the controller to delete the server without waiting for user permission. If set to <code>false</code>, the server will only be deleted after a manual approval.</p>
+</li>
+</ul>
+<p>By setting these fields, you can fine-tune how the server lifecycle is managed within your Kubernetes environment.</p>
+<h3 id="tips-and-considerations">Tips and Considerations</h3>
+<ul>
+<li><strong>Resource Allocation</strong>: It’s crucial to define the <code>cpu</code> and <code>memory</code> limits and requests according to the expected usage of the server to avoid performance issues.</li>
+</ul>
 
 
 

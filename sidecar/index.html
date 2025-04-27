@@ -63,6 +63,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#sidecar" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -329,6 +334,21 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Sidecar
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -341,6 +361,88 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Routes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Routes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#allow-delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      Allow Delete
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Allow Delete">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request Format
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shutdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      Shutdown
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shutdown">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-format_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request Format
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -385,6 +487,79 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Routes
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Routes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#allow-delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      Allow Delete
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Allow Delete">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request Format
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#shutdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      Shutdown
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Shutdown">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#request-format_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request Format
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -400,9 +575,67 @@
 
 
 
-  <h1>Sidecar</h1>
+<h1 id="sidecar">Sidecar</h1>
+<p>The sidecar pattern is widely used in Kubernetes. It typically involves running a secondary container alongside the main application container to provide additional functionality. You can read more about the pattern <a href="https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/">here</a>.</p>
+<p>In this project, the sidecar acts as a communication bridge between the controller and the game server.</p>
+<p>The sidecar exposes a simple REST API with a few routes that the server and controller interact with.</p>
+<h2 id="routes">Routes</h2>
+<p>The sidecar provides the following endpoints:</p>
+<ul>
+<li><code>GET /allow_delete</code></li>
+<li><code>POST /allow_delete</code></li>
+<li><code>GET /shutdown</code></li>
+<li><code>POST /shutdown</code></li>
+<li><code>/health</code></li>
+</ul>
+<hr />
+<h3 id="allow-delete">Allow Delete</h3>
+<p>The <code>allow_delete</code> routes are used to check or set whether the server is allowed to be deleted.</p>
+<ul>
+<li><strong><code>GET /allow_delete</code></strong> — Retrieve whether deletion is allowed.</li>
+<li><strong><code>POST /allow_delete</code></strong> — Set whether deletion is allowed.</li>
+</ul>
+<p>Both the GET and POST methods operate on the same internal boolean value.</p>
+<h4 id="request-format">Request Format</h4>
+<p><strong>JSON Example:</strong></p>
+<pre><code class="language-json">{
+  &quot;allowed&quot;: true
+}
 
-
+</code></pre>
+<p><strong>Go Struct Example</strong>:</p>
+<pre><code class="language-go">type DeleteRequest struct {
+    Allowed bool `json:&quot;allowed&quot;`
+}
+</code></pre>
+<p>The boolean value controls whether the server considers itself safe to delete.
+* The controller usually issues GET requests to check the status.
+* The game server typically issues POST requests to update the status.</p>
+<blockquote>
+<p><strong>Note:</strong></p>
+<p>Be cautious when toggling the <code>allowed</code> state back to <code>false</code>.
+If the controller detects <code>allowed = true</code>, it may already begin the deletion process, even if you immediately set it back to <code>false</code>.</p>
+</blockquote>
+<h3 id="shutdown">Shutdown</h3>
+<p>The <code>shutdown</code> routes indicate whether a shutdown has been requested for the server.</p>
+<ul>
+<li><code>GET /shutdown</code> — Retrieve whether shutdown has been requested.</li>
+<li><code>POST /shutdown</code> — Set whether shutdown has been requested.</li>
+</ul>
+<p>Similar to <code>allow_delete</code>, these routes operate on an internal boolean value.</p>
+<h4 id="request-format_1">Request Format</h4>
+<p><strong>JSON Example</strong>:</p>
+<pre><code class="language-json">{
+  &quot;shutdown&quot;: true,
+}
+</code></pre>
+<p><strong>Go Struct Example</strong>:</p>
+<pre><code class="language-go">type ShutdownRequest struct {
+    Shutdown bool `json:&quot;shutdown&quot;`
+}
+</code></pre>
+<p>The controller sets this flag once it detects a deletion timestamp on the <code>Server</code> object.
+The game server can poll this value to detect when a shutdown has been requested and gracefully handle it.</p>
 
 
 

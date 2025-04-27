@@ -63,6 +63,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#gameautoscaler" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -307,6 +312,21 @@
       <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
       
       
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Autoscaler
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
         
@@ -319,6 +339,76 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manifest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Concept
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-jsons" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request JSONs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#response-jsons" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response JSONs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Response JSONs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#go-structs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Go Structs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -385,6 +475,67 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      Manifest
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-concept" class="md-nav__link">
+    <span class="md-ellipsis">
+      Basic Concept
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#request-jsons" class="md-nav__link">
+    <span class="md-ellipsis">
+      Request JSONs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#response-jsons" class="md-nav__link">
+    <span class="md-ellipsis">
+      Response JSONs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Response JSONs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#go-structs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Go Structs
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -400,9 +551,64 @@
 
 
 
-  <h1>Autoscaler</h1>
-
 <p><img alt="Test Image" src="../imgs/general_communication.png" title="General Communication" /></p>
+<h1 id="gameautoscaler">GameAutoscaler</h1>
+<p>The <strong>GameAutoscaler</strong> is a resource that periodically triggers a webhook to adjust the replica count of a <strong>GameType</strong>. It sends requests to the defined webhook endpoint, and based on the response, it adjusts the number of replicas.</p>
+<h3 id="manifest">Manifest</h3>
+<p>The manifest for a <strong>GameAutoscaler</strong> object looks like this:</p>
+<pre><code class="language-yaml">apiVersion: network.unfamousthomas.me/v1alpha1
+kind: GameAutoscaler
+metadata:
+  name: gameautoscaler-sample
+spec:
+  gameName: gametype-sample #Gametype gametype-sample has to exist
+  policy:
+    type: webhook #Currently only support Webhook
+    webhook: #Webhook specifications, either path and url OR service need to be defined
+      path: &quot;/scale&quot;
+      url: &quot;http://localhost:2411&quot;
+      service:
+        name: someService123
+        namespace: default
+        port: 8080
+  sync:
+    type: fixedinterval #Currently only supports fixedinterval
+    interval: 10m #How often to send the webhook
+</code></pre>
+<h3 id="basic-concept">Basic Concept</h3>
+<p>The GameAutoscaler object simplifies the autoscaling of GameType resources by using a webhook. The key fields to configure are:</p>
+<ul>
+<li><code>gameName</code>: The name of the (already existing) <strong>GameType</strong> that needs to be scaled</li>
+<li><code>policy.webhook</code>: The configuration of the webhook</li>
+<li><code>sync</code>: Defines how often and how the webhook should be triggered. </li>
+</ul>
+<h3 id="request-jsons">Request JSONs</h3>
+<p>When the <strong>GameAutoscaler</strong> triggers the webhook, it sends a request in the following format:</p>
+<pre><code class="language-json">{
+  &quot;game_name&quot;: &quot;gametype-sample&quot;,
+  &quot;current_replicas&quot;: 5
+}
+</code></pre>
+<h3 id="response-jsons">Response JSONs</h3>
+<p>The webhook should respond with a JSON object indicating whether scaling is required and the desired replica count:</p>
+<pre><code class="language-json">{
+  &quot;scale&quot;: true,
+  &quot;desired_replicas&quot;: 10,
+}
+</code></pre>
+<p>If the webhook returns the above, the <strong>GameAutoscaler</strong> will update the <strong>GameType</strong> to have 10 replicas.</p>
+<h4 id="go-structs">Go Structs</h4>
+<p>For those interested in implementing the webhook in Go, here are the Go structs representing the request and response formats:</p>
+<pre><code class="language-go">type AutoscaleRequest struct {
+    GameName        string `json:&quot;game_name&quot;`
+    CurrentReplicas int    `json:&quot;current_replicas&quot;`
+}
+
+type AutoscaleResponse struct {
+    Scale           bool `json:&quot;scale&quot;`
+    DesiredReplicas int  `json:&quot;desired_replicas&quot;`
+}
+</code></pre>
 
 
 
