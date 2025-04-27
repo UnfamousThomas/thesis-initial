@@ -54,8 +54,16 @@ var _ = Describe("GameType Controller", func() {
 				},
 				Spec: basicGametypeSpec,
 			}
+			By("Making sure server does not exist")
+			err := k8sClient.Get(ctx, typeNamespacedName, gametype)
+			if err == nil {
+				return
+			}
+			if !errors.IsNotFound(err) {
+				Expect(err).To(Succeed())
+			}
 			By("creating the custom resource for the Kind GameType")
-			err := k8sClient.Create(ctx, gametype)
+			err = k8sClient.Create(ctx, gametype)
 			Expect(err).To(BeNil())
 
 			Eventually(func() error {
