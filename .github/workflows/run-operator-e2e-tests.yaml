@@ -7,7 +7,7 @@ on:
       - '.github/workflows/test.yml' # re-run if workflow changes
 
 jobs:
-  test:
+  e2e-test:
     runs-on: ubuntu-latest
 
     steps:
