@@ -11,7 +11,7 @@ spec:
     prioritizeAllowed: true
     agePriority: oldest_first
   spec:
-    duration: 5m
+    timeout: 5m
     allowForceDelete: false
     pod:
       containers:

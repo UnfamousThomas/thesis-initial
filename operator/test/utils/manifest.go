@@ -63,8 +63,6 @@ metadata:
   name: %s
   namespace: %s
 spec:
-  scaling:
-    replicas: 2
   fleetSpec:
     scaling:
       replicas: %d

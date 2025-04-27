@@ -40,7 +40,7 @@ func (w ProductionWebhookRequest) SendScaleWebhookRequest(autoscaler *networkv1a
 
 	request := AutoscaleRequest{
 		GameName:        autoscaler.Spec.GameName,
-		CurrentReplicas: gametype.Spec.Scaling.CurrentReplicas,
+		CurrentReplicas: int(gametype.Spec.FleetSpec.Scaling.Replicas),
 	}
 	requestBody, err := json.Marshal(request)
 	if err != nil {

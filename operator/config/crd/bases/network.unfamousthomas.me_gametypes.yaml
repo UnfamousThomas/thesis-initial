@@ -3617,17 +3617,8 @@ spec:
                 - scaling
                 - spec
                 type: object
-              scaling:
-                properties:
-                  replicas:
-                    default: 1
-                    type: integer
-                required:
-                - replicas
-                type: object
             required:
             - fleetSpec
-            - scaling
             type: object
           status:
             properties:
@@ -3669,8 +3660,13 @@ spec:
                 type: array
               fleetName:
                 type: string
+              fleetReplicas:
+                default: 0
+                format: int32
+                type: integer
             required:
             - fleetName
+            - fleetReplicas
             type: object
         type: object
     served: true

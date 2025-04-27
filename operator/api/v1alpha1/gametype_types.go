@@ -22,19 +22,15 @@ import (
 
 // GameTypeSpec defines the desired state of GameType
 type GameTypeSpec struct {
-	Scaling   TypeScaling `json:"scaling"`
-	FleetSpec FleetSpec   `json:"fleetSpec"`
-}
-
-type TypeScaling struct {
-	// +kubebuilder:default=1
-	CurrentReplicas int `json:"replicas"`
+	FleetSpec FleetSpec `json:"fleetSpec"`
 }
 
 // GameTypeStatus defines the observed state of GameType
 type GameTypeStatus struct {
 	Conditions       []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 	CurrentFleetName string             `json:"fleetName"`
+	// +kubebuilder:default=0
+	CurrentFleetReplicas int32 `json:"fleetReplicas"`
 }
 
 // +kubebuilder:object:root=true
