@@ -18,10 +18,12 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,12 +88,40 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{Requeue: true}, nil
 	}
 
+	err := r.updateReplicaCount(ctx, gametype)
+	if err != nil {
+		return ctrl.Result{Requeue: true}, err
+	}
+
 	result, err, done := r.handleUpdating(ctx, gametype, logger)
 	if done {
 		return result, err
 	}
 
 	return ctrl.Result{Requeue: true}, nil
+}
+
+func (r *GameTypeReconciler) updateReplicaCount(ctx context.Context, gametype *networkv1alpha1.GameType) error {
+	if gametype.Status.CurrentFleetName == "" {
+		return nil
+	}
+
+	fleet := &networkv1alpha1.Fleet{}
+	name := types.NamespacedName{
+		Namespace: gametype.Namespace,
+		Name:      gametype.Status.CurrentFleetName,
+	}
+	err := r.Get(ctx, name, fleet)
+	if err != nil {
+		return err
+	}
+
+	if fleet == nil {
+		return fmt.Errorf("could not get fleet")
+	}
+	gametype.Status.CurrentFleetReplicas = fleet.Spec.Scaling.Replicas
+	err = r.Status().Update(ctx, gametype)
+	return err
 }
 
 func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error, bool) {
@@ -124,9 +154,14 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 			res, err := r.handleCreation(ctx, gametype, logger)
 			return res, err, true
 		} else {
-			if fleet.Spec.Scaling.Replicas != int32(gametype.Spec.Scaling.CurrentReplicas) {
-				fleet.Spec.Scaling.Replicas = int32(gametype.Spec.Scaling.CurrentReplicas)
+			if gametype.Spec.FleetSpec.Scaling.Replicas != gametype.Status.CurrentFleetReplicas {
+				gametype.Status.CurrentFleetReplicas = gametype.Spec.FleetSpec.Scaling.Replicas
+				fleet.Spec.Scaling.Replicas = gametype.Spec.FleetSpec.Scaling.Replicas
 				if err := r.Update(ctx, &fleet); err != nil {
+					return ctrl.Result{Requeue: true}, err, true
+				}
+				err := r.Status().Update(ctx, gametype)
+				if err != nil {
 					return ctrl.Result{Requeue: true}, err, true
 				}
 				r.emitEventf(gametype, corev1.EventTypeNormal, utils.ReasonGametypeReplicasUpdated, "Scaling gametype to %d", fleet.Spec.Scaling.Replicas)

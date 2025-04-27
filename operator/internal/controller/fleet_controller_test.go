@@ -32,7 +32,7 @@ import (
 
 var basicFleetSpec = networkv1alpha1.FleetSpec{
 	Scaling: networkv1alpha1.FleetScaling{
-		Replicas:          3,
+		Replicas:          2,
 		PrioritizeAllowed: false,
 		AgePriority:       networkv1alpha1.OldestFirst,
 	},

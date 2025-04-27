@@ -252,7 +252,7 @@ var _ = Describe("GameAutoscaler Controller", func() {
 			updatedGameType := networkv1alpha1.GameType{}
 			err = k8sClient.Get(ctx, gameTypeNamespacedName, &updatedGameType)
 			Expect(err).To(BeNil())
-			Expect(updatedGameType.Spec.Scaling.CurrentReplicas).Should(BeEquivalentTo(10))
+			Expect(updatedGameType.Spec.FleetSpec.Scaling.Replicas).Should(BeEquivalentTo(10))
 		})
 
 		It("Reconcile with invalid types", func() {

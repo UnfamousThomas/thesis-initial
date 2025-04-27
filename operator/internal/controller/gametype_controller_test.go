@@ -32,9 +32,6 @@ import (
 )
 
 var basicGametypeSpec = networkv1alpha1.GameTypeSpec{
-	Scaling: networkv1alpha1.TypeScaling{
-		CurrentReplicas: 2,
-	},
 	FleetSpec: basicFleetSpec,
 }
 var _ = Describe("GameType Controller", func() {
@@ -57,8 +54,16 @@ var _ = Describe("GameType Controller", func() {
 				},
 				Spec: basicGametypeSpec,
 			}
+			By("Making sure server does not exist")
+			err := k8sClient.Get(ctx, typeNamespacedName, gametype)
+			if err == nil {
+				return
+			}
+			if !errors.IsNotFound(err) {
+				Expect(err).To(Succeed())
+			}
 			By("creating the custom resource for the Kind GameType")
-			err := k8sClient.Create(ctx, gametype)
+			err = k8sClient.Create(ctx, gametype)
 			Expect(err).To(BeNil())
 
 			Eventually(func() error {
@@ -84,6 +89,9 @@ var _ = Describe("GameType Controller", func() {
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
+			if err != nil && errors.IsNotFound(err) {
+				return
+			}
 			Expect(err).To(BeNil())
 
 			By("Cleanup the specific resource instance GameType")
@@ -317,7 +325,7 @@ var _ = Describe("GameType Controller", func() {
 
 			var gt networkv1alpha1.GameType
 			Expect(k8sClient.Get(ctx, typeNamespacedName, &gt)).To(Succeed())
-			gt.Spec.Scaling.CurrentReplicas = 5
+			gt.Spec.FleetSpec.Scaling.Replicas = 5
 			Expect(k8sClient.Update(ctx, &gt)).To(Succeed())
 
 			By("Trigger reconcile to update replicas")
@@ -411,7 +419,7 @@ var _ = Describe("GameType Controller", func() {
 			Expect(hasInitialFleetEvent).To(BeTrue())
 
 			By("Check if scaling event is emitted")
-			gt.Spec.Scaling.CurrentReplicas = gt.Spec.Scaling.CurrentReplicas + 1
+			gt.Spec.FleetSpec.Scaling.Replicas = gt.Spec.FleetSpec.Scaling.Replicas + 1
 			Expect(k8sClient.Update(ctx, &gt)).To(Succeed())
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(BeNil())
@@ -422,7 +430,7 @@ var _ = Describe("GameType Controller", func() {
 			Expect(k8sClient.Get(ctx, typeNamespacedName, &gt)).To(Succeed())
 
 			hasScalingEvent := false
-			requiredMsg := fmt.Sprintf("Scaling gametype to %d", gt.Spec.Scaling.CurrentReplicas)
+			requiredMsg := fmt.Sprintf("Scaling gametype to %d", gt.Spec.FleetSpec.Scaling.Replicas)
 			for _, event := range recorder.Events {
 				if event.Message == requiredMsg {
 					hasScalingEvent = true

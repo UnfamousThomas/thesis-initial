@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: server-sample
 spec:
-  duration: 5m
+  timeout: 5m
   allowForceDelete: false
   pod:
     containers:

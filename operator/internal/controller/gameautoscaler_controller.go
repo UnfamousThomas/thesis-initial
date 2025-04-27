@@ -92,7 +92,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		}, nil
 	}
 
-	gametype.Spec.Scaling.CurrentReplicas = result.DesiredReplicas
+	gametype.Spec.FleetSpec.Scaling.Replicas = int32(result.DesiredReplicas)
 	if err := r.Client.Update(ctx, gametype); err != nil {
 		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameautoscalerScale, "failed to update the gametype")
 		return ctrl.Result{}, fmt.Errorf("failed to update gametype with new replica count: %w", err)
