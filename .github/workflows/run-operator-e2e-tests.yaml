@@ -1,0 +1,27 @@
+name: Operator E2E Tests
+
+on:
+  pull_request:
+    paths:
+      - 'operator/**'
+      - '.github/workflows/test.yml' # re-run if workflow changes
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Install dependencies and run tests
+        working-directory: ./operator
+        run: |
+          make kind-install
+          make kind-create-cluster
+          make test-e2e
