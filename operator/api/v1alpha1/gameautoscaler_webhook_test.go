@@ -40,7 +40,7 @@ var _ = Describe("GameAutoscaler Webhook", func() {
 	})
 	Context("When creating GameAutoscaler under Validating Webhook", func() {
 		It("Should deny if a required field is empty", func() {
-			fmt.Println("test")
+			fmt.Println("test2")
 			service := Service{
 				Name:      "a",
 				Namespace: "default",
