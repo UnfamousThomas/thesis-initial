@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"fmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,6 +40,7 @@ var _ = Describe("GameAutoscaler Webhook", func() {
 	})
 	Context("When creating GameAutoscaler under Validating Webhook", func() {
 		It("Should deny if a required field is empty", func() {
+			fmt.Println("test")
 			service := Service{
 				Name:      "a",
 				Namespace: "default",
