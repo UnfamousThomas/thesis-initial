@@ -1,0 +1,4 @@
+site_name: Thesis Documentation
+site_url: https://unfamousthomas.github.io/thesis
+theme:
+  name: material
