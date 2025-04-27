@@ -1,5 +1,3 @@
-![Test Image](imgs/general_communication.png "General Communication")
-
 # GameAutoscaler
 
 The **GameAutoscaler** is a resource that periodically triggers a webhook to adjust the replica count of a **GameType**. It sends requests to the defined webhook endpoint, and based on the response, it adjusts the number of replicas.
