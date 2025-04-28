@@ -7,9 +7,7 @@ import (
 	"net/http"
 )
 
-var shutdown = false
-
-type shutdownRequest struct {
+type ShutdownRequest struct {
 	Shutdown bool `json:"shutdown"`
 }
 
@@ -17,9 +15,10 @@ type shutdownRequest struct {
 func IsShutdownRequested(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(shutdownRequest{Shutdown: shutdown})
+		err := json.NewEncoder(w).Encode(ShutdownRequest{Shutdown: a.ShutdownRequested})
 		if err != nil {
 			log.Printf("Error encoding response: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	})
@@ -29,17 +28,19 @@ func IsShutdownRequested(a *app.App) func(http.ResponseWriter, *http.Request) {
 func SetShutdownRequested(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		var request shutdownRequest
+		var request ShutdownRequest
 		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			log.Printf("Error decoding request: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		shutdown = request.Shutdown
+		a.ShutdownRequested = request.Shutdown
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(request)
 		if err != nil {
 			log.Printf("Error encoding response: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	})

@@ -28,7 +28,8 @@ func CreateScaler(a *app.App) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		err, obj := kube.CreateScaler(context.WithValue(context.Background(), "kube", "create-scaler"), *request.Scaler, a.DynamicClient)
+		scaler := request.Scaler
+		err = kube.CreateScaler(context.WithValue(context.Background(), "kube", "create-scaler"), scaler, a.DynamicClient)
 		if err != nil {
 			log.Printf("Error creating scaler: %v", err)
 			e := map[string]string{
@@ -49,7 +50,7 @@ func CreateScaler(a *app.App) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		jsonData, err := json.Marshal(obj)
+		jsonData, err := json.Marshal(scaler)
 		if err != nil {
 			log.Println("Error marshaling json:", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -64,6 +65,7 @@ func CreateScaler(a *app.App) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
+// DeleteScaler is used to delete an existing scaler from the cluster
 func DeleteScaler(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -79,7 +81,7 @@ func DeleteScaler(a *app.App) func(http.ResponseWriter, *http.Request) {
 			return
 		}
 
-		err = kube.DeleteScaler(context.WithValue(context.Background(), "kube", "delete-scaler"), *request.Metadata, a.DynamicClient, a.ClientSet)
+		err = kube.DeleteScaler(context.WithValue(context.Background(), "kube", "delete-scaler"), *request.Metadata, a.DynamicClient)
 		if err != nil {
 			log.Printf("Error deleting scaler: %v\n", err)
 			e := map[string]string{

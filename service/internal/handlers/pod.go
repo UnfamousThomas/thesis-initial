@@ -13,6 +13,7 @@ type AddPodLabelsRequest struct {
 	Metadata *kube.Metadata `json:"metadata"`
 }
 
+// AddPodLabel is used to add a new label to a pod
 func AddPodLabel(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -58,6 +59,7 @@ type RemovePodLabelRequest struct {
 	Label    *string        `json:"label"`
 }
 
+// RemovePodLabel is used to remove a label from a pod
 func RemovePodLabel(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// SetupRoutes is used to define routes and their matching handlers
 func SetupRoutes(a *app.App) {
 
 	a.Mux.HandleFunc("POST /server", handlers.CreateServer(a))

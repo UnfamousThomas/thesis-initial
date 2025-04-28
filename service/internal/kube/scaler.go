@@ -2,11 +2,13 @@ package kube
 
 import (
 	"context"
+	"encoding/json"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/kubernetes"
 )
+
+// The structs and types are copied from the operator types
 
 type PolicyStrategy string
 type SyncStrategy string
@@ -53,32 +55,48 @@ type Sync struct {
 }
 
 type GameAutoscaler struct {
-	Metadata Metadata           `json:"metadata"`
-	Spec     GameAutoscalerSpec `json:"spec"`
+	ApiVersion APIVersion         `json:"apiVersion"`
+	Kind       Kind               `json:"kind"`
+	Metadata   Metadata           `json:"metadata"`
+	Spec       GameAutoscalerSpec `json:"spec"`
 }
 
-func CreateScaler(ctx context.Context, scaler GameAutoscaler, client *dynamic.DynamicClient) (error, map[string]interface{}) {
+// CreateScaler is used to create a new gameautoscaler using the dynamic client
+func CreateScaler(ctx context.Context, scaler *GameAutoscaler, client *dynamic.DynamicClient) error {
 	resource := client.Resource(ServerGCR).Namespace(scaler.Metadata.Namespace)
-	scalerStruct := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": crdGroup + "/" + crdVersion,
-			"kind":       scalerResourceName,
-			"metadata":   map[string]interface{}{"name": scaler.Metadata.Name, "namespace": scaler.Metadata.Namespace},
-			"spec":       scaler.Spec,
-		},
-	}
-	_, err := resource.Create(ctx, scalerStruct, metav1.CreateOptions{})
+	scalerStruct, err := scalerToUnstructured(scaler)
 	if err != nil {
-		return err, nil
+		return err
 	}
-	return nil, scalerStruct.Object
+	_, err = resource.Create(ctx, scalerStruct, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func DeleteScaler(ctx context.Context, metadata Metadata, client *dynamic.DynamicClient, clientset *kubernetes.Clientset) error {
+// DeleteScaler is used to delete a gameautoscaler, based on the namespace and name passed to the metadata
+func DeleteScaler(ctx context.Context, metadata Metadata, client *dynamic.DynamicClient) error {
 	resource := client.Resource(ServerGCR).Namespace(metadata.Namespace)
 	err := resource.Delete(ctx, metadata.Name, metav1.DeleteOptions{})
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+// serverToUnstructured is used to make a GameAutoscaler object into an unstructured object which can interact with dynamic client
+func scalerToUnstructured(autoscaler *GameAutoscaler) (*unstructured.Unstructured, error) {
+	autoscaler.ApiVersion = crdGroup + "/" + crdVersion
+	autoscaler.Kind = scalerResourceName
+	bytes, err := json.Marshal(autoscaler)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := &unstructured.Unstructured{}
+	if err := obj.UnmarshalJSON(bytes); err != nil {
+		return nil, err
+	}
+	return obj, nil
 }

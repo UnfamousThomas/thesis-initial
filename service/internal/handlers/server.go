@@ -34,7 +34,8 @@ func CreateServer(a *app.App) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		err, obj := kube.CreateServer(context.WithValue(context.Background(), "kube", "create-server"), *request.Server, a.DynamicClient)
+		server := request.Server
+		err = kube.CreateServer(context.WithValue(context.Background(), "kube", "create-server"), server, a.DynamicClient)
 		if err != nil {
 			log.Printf("Error creating server: %v", err)
 			e := map[string]string{
@@ -55,7 +56,7 @@ func CreateServer(a *app.App) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		jsonData, err := json.Marshal(obj)
+		jsonData, err := json.Marshal(server)
 		if err != nil {
 			log.Println("Error marshaling json:", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -69,6 +70,8 @@ func CreateServer(a *app.App) func(http.ResponseWriter, *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 }
+
+// DeleteServer is used to delete an existing Server from the cluster, based on the namespace and name
 func DeleteServer(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

@@ -7,9 +7,7 @@ import (
 	"net/http"
 )
 
-var delete = false
-
-type deleteRequest struct {
+type DeleteRequest struct {
 	Allowed bool `json:"allowed"`
 }
 
@@ -17,9 +15,10 @@ type deleteRequest struct {
 func IsDeleteAllowed(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		err := json.NewEncoder(w).Encode(deleteRequest{Allowed: delete})
+		err := json.NewEncoder(w).Encode(DeleteRequest{Allowed: a.DeleteAllowed})
 		if err != nil {
 			log.Printf("Error encoding response: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 	})
@@ -29,17 +28,19 @@ func IsDeleteAllowed(a *app.App) func(http.ResponseWriter, *http.Request) {
 func SetDeleteAllowed(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		var request deleteRequest
+		var request DeleteRequest
 		err := json.NewDecoder(r.Body).Decode(&request)
 		if err != nil {
 			log.Printf("Error decoding request: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		delete = request.Allowed
+		a.DeleteAllowed = request.Allowed
 		w.Header().Set("Content-Type", "application/json")
 		err = json.NewEncoder(w).Encode(request)
 		if err != nil {
 			log.Printf("Error encoding response: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	})

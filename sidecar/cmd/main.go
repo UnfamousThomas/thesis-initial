@@ -8,7 +8,9 @@ import (
 
 func main() {
 	a := app.App{
-		Mux: http.NewServeMux(),
+		Mux:               http.NewServeMux(),
+		ShutdownRequested: false,
+		DeleteAllowed:     false,
 	}
 
 	routes.SetupRoutes(&a)

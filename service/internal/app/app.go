@@ -14,6 +14,7 @@ type App struct {
 	ClientSet     *kubernetes.Clientset
 }
 
+// CreateApp is where the app struct is created and related sub-variables are initialized
 func CreateApp() *App {
 	config, err := rest.InClusterConfig()
 	if err != nil {
