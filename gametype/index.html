@@ -579,15 +579,15 @@ spec:
 <p>The <strong>GameType</strong> object currently acts as a wrapper for 1-2 fleets. While its manifest closely mirrors the <strong>Fleet</strong> object, it provides the additional role of handling multiple fleet versions. This allows for gradual upgrades or changes in server configurations, with the flexibility to roll out new fleet versions in a controlled manner.</p>
 <h3 id="upgrade-process">Upgrade Process</h3>
 <p>When the pod spec (the configuration of the containers) for the servers changes, the GameType initiates the following process:
-1. <strong>Create New Fleet</strong>: A new fleet is created with the same number of replicas and the updated spec.</p>
-<ol>
+* <strong>Create New Fleet</strong>: A new fleet is created with the same number of replicas and the updated spec.</p>
+<ul>
 <li>
 <p><strong>Gradual Upgrade</strong>:  The old fleet is gradually removed according to the server deletion rules set in the fleet (e.g., prioritizing allowed deletions or age-based deletions).</p>
 </li>
 <li>
 <p><strong>Trigger Old Fleet Deletion</strong>: Once the new fleet is running and stable, the old fleet is triggered for deletion, again adhering to the server's deletion policies.</p>
 </li>
-</ol>
+</ul>
 <p>This ensures a smooth upgrade process, minimizing downtime and adhering to the configured server policies.</p>
 <h3 id="future-changes">Future Changes</h3>
 <p>The <strong>GameType</strong> spec may evolve in the future to provide more advanced scaling or versioning capabilities. However, for now, it functions as a simple container for one or two fleets, with the primary goal of supporting controlled upgrades and scaling of game servers.</p>
