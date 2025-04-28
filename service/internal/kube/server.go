@@ -14,6 +14,8 @@ import (
 	"net/http"
 )
 
+// The structs and types are copied from the operator types
+
 var ServerGCR = schema.GroupVersionResource{
 	Group:    crdGroup,
 	Version:  crdVersion,
@@ -27,27 +29,27 @@ type ServerSpec struct {
 }
 
 type Server struct {
-	Metadata Metadata   `json:"metadata"`
-	Spec     ServerSpec `json:"spec"`
+	ApiVersion APIVersion `json:"apiVersion"`
+	Kind       Kind       `json:"kind"`
+	Metadata   Metadata   `json:"metadata"`
+	Spec       ServerSpec `json:"spec"`
 }
 
-func CreateServer(context context.Context, server Server, client *dynamic.DynamicClient) (error, map[string]interface{}) {
+// CreateServer is used to create a new Server resource on the cluster, matching the Server struct
+func CreateServer(context context.Context, server *Server, client *dynamic.DynamicClient) error {
 	resource := client.Resource(ServerGCR).Namespace(server.Metadata.Namespace)
-	serverStruct := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": crdGroup + "/" + crdVersion,
-			"kind":       serverResourceName,
-			"metadata":   map[string]interface{}{"name": server.Metadata.Name, "namespace": server.Metadata.Namespace},
-			"spec":       server.Spec,
-		},
-	}
-	_, err := resource.Create(context, serverStruct, metav1.CreateOptions{})
+	serverStruct, err := serverToUnstructured(server)
 	if err != nil {
-		return err, nil
+		return err
 	}
-	return nil, serverStruct.Object
+	_, err = resource.Create(context, serverStruct, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
+// DeleteServer is used to delete a Server resource from the cluster, based on Metadata.Name and Metadata.Namespace
 func DeleteServer(context context.Context, metadata Metadata, client *dynamic.DynamicClient, clientset *kubernetes.Clientset, force bool) error {
 	resource := client.Resource(ServerGCR).Namespace(metadata.Namespace)
 	err := resource.Delete(context, metadata.Name, metav1.DeleteOptions{})
@@ -64,6 +66,7 @@ func DeleteServer(context context.Context, metadata Metadata, client *dynamic.Dy
 	return nil
 }
 
+// sendDeleteAllowed is used to tell the pods they can be deleted. This is used when force is true for DeleteServer
 func sendDeleteAllowed(context context.Context, name string, client *kubernetes.Clientset) error {
 	resource := client.CoreV1().Pods(name)
 	pod, err := resource.Get(context, name+"-pod", metav1.GetOptions{})
@@ -94,4 +97,20 @@ func sendDeleteAllowed(context context.Context, name string, client *kubernetes.
 	}
 	defer resp.Body.Close()
 	return nil
+}
+
+// serverToUnstructured is used to make a Server object into a unstructured object which can interact with dynamic client
+func serverToUnstructured(server *Server) (*unstructured.Unstructured, error) {
+	server.ApiVersion = crdGroup + "/" + crdVersion
+	server.Kind = gameResourceName
+	bodyBytes, err := json.Marshal(server)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := &unstructured.Unstructured{}
+	if err := obj.UnmarshalJSON(bodyBytes); err != nil {
+		return nil, err
+	}
+	return obj, nil
 }

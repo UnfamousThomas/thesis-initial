@@ -27,7 +27,8 @@ func AddPodLabels(context context.Context, metadata Metadata, client *kubernetes
 	return nil
 }
 
-func RemovePodLabel(context context.Context, metadata Metadata, label string, client *kubernetes.Clientset) error {
+// RemovePodLabel removes the label with "key" from the pod if it exists.
+func RemovePodLabel(context context.Context, metadata Metadata, key string, client *kubernetes.Clientset) error {
 	resource := client.CoreV1().Pods(metadata.Namespace)
 	pod, err := resource.Get(context, metadata.Name+"-pod", metav1.GetOptions{})
 	if err != nil {
@@ -35,7 +36,7 @@ func RemovePodLabel(context context.Context, metadata Metadata, label string, cl
 	}
 
 	labels := pod.GetLabels()
-	delete(labels, label)
+	delete(labels, key)
 
 	pod.SetLabels(labels)
 	_, err = resource.Update(context, pod, metav1.UpdateOptions{})

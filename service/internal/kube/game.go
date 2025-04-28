@@ -2,6 +2,7 @@ package kube
 
 import (
 	"context"
+	"encoding/json"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,36 +17,31 @@ var GameGCR = schema.GroupVersionResource{
 }
 
 type GameTypeSpec struct {
-	Scaling   TypeScaling `json:"scaling"`
-	FleetSpec FleetSpec   `json:"fleetSpec"`
-}
-
-type TypeScaling struct {
-	CurrentReplicas int `json:"replicas"`
+	FleetSpec FleetSpec `json:"fleetSpec"`
 }
 
 type GameType struct {
-	Metadata Metadata     `json:"metadata"`
-	Spec     GameTypeSpec `json:"spec"`
+	ApiVersion APIVersion   `json:"apiVersion"`
+	Kind       Kind         `json:"kind"`
+	Metadata   Metadata     `json:"metadata"`
+	Spec       GameTypeSpec `json:"spec"`
 }
 
-func CreateGame(context context.Context, game GameType, client *dynamic.DynamicClient) (error, map[string]interface{}) {
+// CreateGame creates a new GameType in the cluster using the dynamic client.
+func CreateGame(context context.Context, game *GameType, client *dynamic.DynamicClient) error {
 	resource := client.Resource(GameGCR).Namespace(game.Metadata.Namespace)
-	gameStruct := &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": crdGroup + "/" + crdVersion,
-			"kind":       gameResourceName,
-			"metadata":   map[string]interface{}{"name": game.Metadata.Name, "namespace": game.Metadata.Namespace},
-			"spec":       game.Spec,
-		},
-	}
-	_, err := resource.Create(context, gameStruct, metav1.CreateOptions{})
+	gameStruct, err := gametypeToUnstructured(game)
 	if err != nil {
-		return err, nil
+		return err
 	}
-	return nil, gameStruct.Object
+	_, err = resource.Create(context, gameStruct, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+	return err
 }
 
+// DeleteGame triggers the game deletion, it is possible to force it using the force variable. It finds the game using Metadata.Name and Metadata.Namespace
 func DeleteGame(ctx context.Context, metadata Metadata, client *dynamic.DynamicClient, clientset *kubernetes.Clientset, force bool) error {
 	resource := client.Resource(GameGCR).Namespace(metadata.Namespace)
 	err := resource.Delete(ctx, metadata.Name, metav1.DeleteOptions{})
@@ -63,6 +59,7 @@ func DeleteGame(ctx context.Context, metadata Metadata, client *dynamic.DynamicC
 	return nil
 }
 
+// removeFleetsForGame is used for deleting all fleets related to a game. This is used when force is true.
 func removeFleetsForGame(ctx context.Context, metadata Metadata, client *dynamic.DynamicClient, clientset *kubernetes.Clientset, force bool) error {
 	fleets, err := client.Resource(FleetGCR).Namespace(metadata.Namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -79,4 +76,20 @@ func removeFleetsForGame(ctx context.Context, metadata Metadata, client *dynamic
 		}
 	}
 	return nil
+}
+
+// gametypeToUnstructured is used to make a GameType object into a unstructured object which can interact with dynamic client
+func gametypeToUnstructured(gametype *GameType) (*unstructured.Unstructured, error) {
+	gametype.ApiVersion = crdGroup + "/" + crdVersion
+	gametype.Kind = gameResourceName
+	bytes, err := json.Marshal(gametype)
+	if err != nil {
+		return nil, err
+	}
+
+	obj := &unstructured.Unstructured{}
+	if err := obj.UnmarshalJSON(bytes); err != nil {
+		return nil, err
+	}
+	return obj, nil
 }

@@ -1,4 +1,12 @@
----
+package utils
+
+import (
+	"fmt"
+)
+
+func CreateServiceDeployManifest(image string) string {
+
+	manifest := fmt.Sprintf(`
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -53,13 +61,15 @@ spec:
       labels:
         app: http-controller-service
     spec:
-      serviceAccountName: http-controller-service
-      imagePullSecrets:
-        - name: ghcr-secret
+      serviceAccountName: http-controller-service-sa
       containers:
         - name: kube-http-service
-          image: ghcr.io/unfamousthomas/service:latest
-          imagePullPolicy: Always
+          image: %s
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
 
+
+`, image)
+	return manifest
+}

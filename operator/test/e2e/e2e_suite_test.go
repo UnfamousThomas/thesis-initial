@@ -19,6 +19,7 @@ package e2e
 import (
 	"fmt"
 	"github.com/unfamousthomas/thesis-operator/test/utils"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -31,11 +32,13 @@ import (
 const projectimage = "example.com/loputoo:v0.0.1"
 const example_server_image = "nginx:latest" //Just a random image to use as a "fake server"
 const sidecar_image = "ghcr.io/unfamousthomas/sidecar:latest"
+const service_image = "example.com/service:latest"
 
 const serverName = "test-server"
 const systemns = "loputoo-system"
 
 var controllerPodName string
+var serviceDeployFile string
 
 var _ = BeforeSuite(func() {
 	By("Setting up timeout")
@@ -49,12 +52,12 @@ var _ = BeforeSuite(func() {
 	By("installing the cert-manager")
 	Expect(utils.InstallCertManager()).To(Succeed())
 
-	By("creating manager systemns")
+	By("creating manager system namespace")
 	cmd = exec.Command("kubectl", "create", "ns", systemns)
 	_, _ = utils.Run(cmd)
 
 	By("building the manager(Operator) image")
-	cmd = exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage), fmt.Sprintf("SERVER_IMG=%s", example_server_image), fmt.Sprintf("SIDECAR_IMG=%s", sidecar_image))
+	cmd = exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage), fmt.Sprintf("SIDECAR_IMG=%s", sidecar_image), fmt.Sprintf("SERVICE_IMG=%s", service_image))
 	_, err = utils.Run(cmd)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
@@ -66,8 +69,25 @@ var _ = BeforeSuite(func() {
 	err = utils.LoadImageToKindClusterWithName(sidecar_image)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
+	By("Loading service image on Kind")
+	err = utils.LoadImageToKindClusterWithName(service_image)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
 	By("installing CRDs")
 	cmd = exec.Command("make", "install")
+	_, err = utils.Run(cmd)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+	By("Setting up the service")
+	serviceFile, err := os.CreateTemp("", "service-*.yaml")
+	manifest := utils.CreateServiceDeployManifest(service_image)
+	_, err = serviceFile.WriteString(manifest)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	err = serviceFile.Close()
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+	serviceDeployFile = serviceFile.Name()
+	By("Applying service manifest")
+	cmd = exec.Command("kubectl", "apply", "-f", serviceFile.Name())
 	_, err = utils.Run(cmd)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
@@ -175,6 +195,10 @@ var _ = AfterSuite(func() {
 	By("removing manager systemns")
 	cmd = exec.Command("kubectl", "delete", "ns", systemns)
 	_, _ = utils.Run(cmd)
+
+	By("Remove temp file")
+	err = os.Remove(serviceDeployFile)
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 })
 
 // Run e2e tests using the Ginkgo runner.

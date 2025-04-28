@@ -7,6 +7,7 @@ import (
 	"net/http"
 )
 
+// SetupRoutes sets up the nessecary routes, their handlers and starts serving http.
 func SetupRoutes(a *app.App) {
 
 	a.Mux.HandleFunc("GET /allow_delete", handlers.IsDeleteAllowed(a))

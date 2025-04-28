@@ -43,11 +43,11 @@ The **GameType** object currently acts as a wrapper for 1-2 fleets. While its ma
 ### Upgrade Process
 
 When the pod spec (the configuration of the containers) for the servers changes, the GameType initiates the following process:
-1. **Create New Fleet**: A new fleet is created with the same number of replicas and the updated spec.
+* **Create New Fleet**: A new fleet is created with the same number of replicas and the updated spec.
 
-2. **Gradual Upgrade**:  The old fleet is gradually removed according to the server deletion rules set in the fleet (e.g., prioritizing allowed deletions or age-based deletions).
+* **Gradual Upgrade**:  The old fleet is gradually removed according to the server deletion rules set in the fleet (e.g., prioritizing allowed deletions or age-based deletions).
 
-3. **Trigger Old Fleet Deletion**: Once the new fleet is running and stable, the old fleet is triggered for deletion, again adhering to the server's deletion policies.
+* **Trigger Old Fleet Deletion**: Once the new fleet is running and stable, the old fleet is triggered for deletion, again adhering to the server's deletion policies.
 
 This ensures a smooth upgrade process, minimizing downtime and adhering to the configured server policies.
 

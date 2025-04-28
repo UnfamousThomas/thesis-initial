@@ -28,7 +28,8 @@ func CreateGame(a *app.App) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		err, obj := kube.CreateGame(context.WithValue(context.Background(), "kube", "create-game"), *request.Game, a.DynamicClient)
+		game := request.Game
+		err = kube.CreateGame(context.WithValue(context.Background(), "kube", "create-game"), game, a.DynamicClient)
 		if err != nil {
 			log.Printf("Error creating game: %v", err)
 			e := map[string]string{
@@ -49,7 +50,7 @@ func CreateGame(a *app.App) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		jsonData, err := json.Marshal(obj)
+		jsonData, err := json.Marshal(game)
 		if err != nil {
 			log.Println("Error marshaling json:", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -64,6 +65,7 @@ func CreateGame(a *app.App) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
+// DeleteGame is used to delete a game from the cluster, using the namespace and name
 func DeleteGame(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

@@ -28,7 +28,8 @@ func CreateFleet(a *app.App) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		err, obj := kube.CreateFleet(context.WithValue(context.Background(), "kube", "create-fleet"), *request.Fleet, a.DynamicClient)
+		fleet := request.Fleet
+		err = kube.CreateFleet(context.WithValue(context.Background(), "kube", "create-fleet"), fleet, a.DynamicClient)
 		if err != nil {
 			log.Printf("Error creating fleet: %v", err)
 			e := map[string]string{
@@ -49,7 +50,7 @@ func CreateFleet(a *app.App) func(http.ResponseWriter, *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		jsonData, err := json.Marshal(obj)
+		jsonData, err := json.Marshal(fleet)
 		if err != nil {
 			log.Println("Error marshaling json:", err)
 			w.WriteHeader(http.StatusInternalServerError)
