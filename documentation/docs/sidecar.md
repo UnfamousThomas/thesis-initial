@@ -74,3 +74,6 @@ type ShutdownRequest struct {
 ```
 The controller sets this flag once it detects a deletion timestamp on the `Server` object.
 The game server can poll this value to detect when a shutdown has been requested and gracefully handle it.
+
+The communication workflow can be viewed here:
+![Communication](imgs/general_communication.png "General Communication")
