@@ -62,7 +62,6 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
-{{ end }}
 ---
 apiVersion: v1
 kind: Service
@@ -75,3 +74,4 @@ spec:
   ports:
     - port: 8080
       targetPort: 8080
+{{ end }}

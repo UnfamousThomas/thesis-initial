@@ -14,69 +14,73 @@ spec:
     singular: gameautoscaler
   scope: Namespaced
   versions:
-  - name: v1alpha1
-    schema:
-      openAPIV3Schema:
-        properties:
-          apiVersion:
-            type: string
-          kind:
-            type: string
-          metadata:
-            type: object
-          spec:
-            properties:
-              gameName:
-                type: string
-              policy:
-                properties:
-                  type:
-                    type: string
-                  webhook:
-                    properties:
-                      path:
-                        type: string
-                      service:
-                        properties:
-                          name:
-                            type: string
-                          namespace:
-                            type: string
-                          port:
-                            type: integer
-                        required:
-                        - name
-                        - namespace
-                        - port
-                        type: object
-                      url:
-                        type: string
-                    required:
-                    - path
-                    type: object
-                required:
-                - type
-                - webhook
-                type: object
-              sync:
-                properties:
-                  fixedInterval:
-                    type: integer
-                  type:
-                    type: string
-                required:
-                - fixedInterval
-                - type
-                type: object
-            required:
-            - gameName
-            - policy
-            - sync
-            type: object
-          status:
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
+    - name: v1alpha1
+      schema:
+        openAPIV3Schema:
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              properties:
+                gameName:
+                  type: string
+                policy:
+                  properties:
+                    type:
+                      enum:
+                        - webhook
+                      type: string
+                    webhook:
+                      properties:
+                        path:
+                          type: string
+                        service:
+                          properties:
+                            name:
+                              type: string
+                            namespace:
+                              type: string
+                            port:
+                              type: integer
+                          required:
+                            - name
+                            - namespace
+                            - port
+                          type: object
+                        url:
+                          type: string
+                      required:
+                        - path
+                      type: object
+                  required:
+                    - type
+                    - webhook
+                  type: object
+                sync:
+                  properties:
+                    interval:
+                      type: string
+                    type:
+                      enum:
+                        - fixedinterval
+                      type: string
+                  required:
+                    - interval
+                    - type
+                  type: object
+              required:
+                - gameName
+                - policy
+                - sync
+              type: object
+            status:
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
