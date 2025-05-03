@@ -106,6 +106,8 @@ func (r *FleetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+// scaleServerCount is used to update the server count based on the Fleet spec
+// It either adds more or remove some servers
 func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1alpha1.Fleet, namespace string) error {
 	if fleet.Status.CurrentReplicas < fleet.Spec.Scaling.Replicas {
 		//Scale up
@@ -139,6 +141,8 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 	return nil
 }
 
+// getServers is used by the FleetReconciler to get all the servers associated with a fleet
+// Internally it just matches the fleet label in the same namespace
 func (r *FleetReconciler) getServers(ctx context.Context, fleet *networkv1alpha1.Fleet) (*networkv1alpha1.ServerList, error) {
 	serverList := &networkv1alpha1.ServerList{}
 	labelSelector := client.MatchingLabels{"fleet": fleet.Name}
@@ -148,7 +152,12 @@ func (r *FleetReconciler) getServers(ctx context.Context, fleet *networkv1alpha1
 	return serverList, nil
 }
 
+// handleDeletion is used by the FleetReconciler to handle deletion.
+// Internally, it first getts all the associated servers, then triggers them for deletion.
+// It requeues the reconcilation, until the amount of servers is 0.
+// Once it is 0, it removes the finalizer.
 func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1alpha1.Fleet) error {
+	//Gets the fleet-connected servers
 	servers, err := r.getServers(ctx, fleet)
 	if err != nil {
 		return err
@@ -158,12 +167,13 @@ func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1al
 			return err
 		}
 	}
-
+	//Get them again to check if any were deleted already
 	servers, err = r.getServers(ctx, fleet)
 	if err != nil {
 		return err
 	}
 	if len(servers.Items) == 0 {
+		//Remove finalizer
 		controllerutil.RemoveFinalizer(fleet, FLEET_FINALIZER)
 		if err := r.Update(ctx, fleet); err != nil {
 			r.emitEventf(fleet, corev1.EventTypeWarning, utils.ReasonFleetUpdateFailed, "Failed to remvoe finalizer: %s", err)
@@ -174,10 +184,12 @@ func (r *FleetReconciler) handleDeletion(ctx context.Context, fleet *networkv1al
 	return nil
 }
 
+// emitEvent is used to quickly emit events from the FleetReconciler
 func (r *FleetReconciler) emitEvent(object runtime.Object, eventtype string, reason utils.EventReason, message string) {
 	r.Recorder.Event(object, eventtype, string(reason), message)
 }
 
+// emitEventf is used to quickly emit events from the FleetReconciler with arguments
 func (r *FleetReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
 	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }
