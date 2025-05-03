@@ -69,29 +69,34 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{Requeue: true}, err
 	}
 
+	//Make sure the type is fine
 	if autoscaler.Spec.AutoscalePolicy.Type != networkv1alpha1.Webhook {
 		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameAutoscalerInvalidAutoscalePolicy,
 			"invalid game autoscaler policy type")
 		return ctrl.Result{}, fmt.Errorf("%s is not a valid policy type", autoscaler.Spec.AutoscalePolicy.Type)
 	}
 
+	//Send request to defined webhook
 	result, err := r.Webhook.SendScaleWebhookRequest(autoscaler, gametype)
 	if err != nil {
 		r.emitEventf(autoscaler, corev1.EventTypeWarning, utils.ReasonGameautoscalerWebhook, "failed to send the webhook request: %v", err)
 		return ctrl.Result{RequeueAfter: time.Minute}, fmt.Errorf("failed to send scale webhook request: %w", err)
 	}
 
+	//Check that the sync type is fine
 	if autoscaler.Spec.Sync.Type != networkv1alpha1.FixedInterval {
 		r.emitEventf(autoscaler, corev1.EventTypeWarning, utils.ReasonGameAutoscalerInvalidSyncType, "%s is not a valid sync type", autoscaler.Spec.Sync.Type)
 		return ctrl.Result{}, fmt.Errorf("%s is not a valid sync type, currently only fixed interval is supported", autoscaler.Spec.Sync.Type)
 	}
 
+	//If scaleing not requested, requeue
 	if !result.Scale {
 		return ctrl.Result{
 			RequeueAfter: autoscaler.Spec.Sync.Time.Duration,
 		}, nil
 	}
 
+	//Otherwise, scale to new replica count
 	gametype.Spec.FleetSpec.Scaling.Replicas = int32(result.DesiredReplicas)
 	if err := r.Client.Update(ctx, gametype); err != nil {
 		r.emitEvent(autoscaler, corev1.EventTypeWarning, utils.ReasonGameautoscalerScale, "failed to update the gametype")
@@ -99,6 +104,7 @@ func (r *GameAutoscalerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 	r.emitEventf(autoscaler, corev1.EventTypeNormal, utils.ReasonGameautoscalerScale, "Scaling game to %d", result.DesiredReplicas)
 
+	//Requeue after the defined time
 	return ctrl.Result{
 		RequeueAfter: autoscaler.Spec.Sync.Time.Duration,
 	}, nil
@@ -111,10 +117,12 @@ func (r *GameAutoscalerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+// emitEvent is used by the GameAutoscalerReconciler to easily add events to objects
 func (r *GameAutoscalerReconciler) emitEvent(object runtime.Object, eventtype string, reason utils.EventReason, message string) {
 	r.Recorder.Event(object, eventtype, string(reason), message)
 }
 
+// emitEventf is used by the GameAutoscalerReconciler to easily add events to objects with arguments
 func (r *GameAutoscalerReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
 	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }

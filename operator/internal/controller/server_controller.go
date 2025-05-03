@@ -107,6 +107,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{Requeue: true}, nil
 	}
 
+	// Ensure pod has the finalizers
 	update, err := r.ensurePodFinalizer(ctx, server)
 	if err != nil || update {
 		return ctrl.Result{}, err
@@ -127,6 +128,7 @@ func (r *ServerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+// ensurePodExists makes sure that the pod with the matching name exists
 func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv1alpha1.Server) (bool, error) {
 	pod := &corev1.Pod{}
 	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
@@ -171,6 +173,7 @@ func (r *ServerReconciler) ensurePodExists(ctx context.Context, server *networkv
 	return true, nil
 }
 
+// handleDeletion handles the deletion process of the Server, by checking with the sidecar if it is allowed to be deleted
 func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1alpha1.Server) error {
 	pod := &corev1.Pod{}
 	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
@@ -215,6 +218,7 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	return nil
 }
 
+// ensurePodFinalizer makes sure the pod has the finalizer
 func (r *ServerReconciler) ensurePodFinalizer(ctx context.Context, server *networkv1alpha1.Server) (bool, error) {
 	pod := &corev1.Pod{}
 	namespacedName := types.NamespacedName{Namespace: server.Namespace, Name: server.Name + "-pod"}
@@ -233,10 +237,12 @@ func (r *ServerReconciler) ensurePodFinalizer(ctx context.Context, server *netwo
 	return true, nil
 }
 
+// emitEvent is used by the ServerReconciler to add events to an object easily
 func (r *ServerReconciler) emitEvent(object runtime.Object, eventtype string, reason utils.EventReason, message string) {
 	r.Recorder.Event(object, eventtype, string(reason), message)
 }
 
+// emitEventf is used by the ServerReconciler to add events with arguments to an object easily
 func (r *ServerReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
 	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }

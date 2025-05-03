@@ -101,6 +101,7 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{Requeue: true}, nil
 }
 
+// updateReplicaCount updates the replica count of the underlying fleet, based on the spec
 func (r *GameTypeReconciler) updateReplicaCount(ctx context.Context, gametype *networkv1alpha1.GameType) error {
 	if gametype.Status.CurrentFleetName == "" {
 		return nil
@@ -124,13 +125,11 @@ func (r *GameTypeReconciler) updateReplicaCount(ctx context.Context, gametype *n
 	return err
 }
 
+// handleUpdating handles the updating process of the GameType
+// Internally, this means creating a fleet, waiting for it to be done
+// Then requesting the other fleet to be deleted
+// And updating the latest fleets replica counts as needed
 func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error, bool) {
-	//Check fleet count, if len(fleets) < 1 then need to create a fleet
-	//Check if currentFleet is up to date with spec
-	//If its not for whatever reason, create a new fleet with the same amount of replicas
-	//If fleet amount is more than 1 then delete the oldest fleet first
-	//If 1 fleet, update its replica count
-
 	fleets, err := utils.GetFleetsForType(ctx, r.Client, gametype, logger)
 	if err != nil {
 		return ctrl.Result{}, err, true
@@ -197,6 +196,9 @@ func (r *GameTypeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
+// handleDeletion is used to trigger deletion of the GameType
+// It first checks if we have the finalizer, then we can imagine we are still removing the fleets
+// Once all fleets are removed, we remove the finalizer
 func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) error {
 	if controllerutil.ContainsFinalizer(gametype, TypeFinalizer) {
 		//Finalizer not yet removed, we can presume that fleet deletion in progress or starting
@@ -225,6 +227,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 	return nil
 }
 
+// handleCreation is used to initially create the underlying fleet
 func (r *GameTypeReconciler) handleCreation(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) (ctrl.Result, error) {
 	fleet := utils.GetFleetObjectForType(gametype)
 	if err := r.Create(ctx, fleet); err != nil {
@@ -235,10 +238,12 @@ func (r *GameTypeReconciler) handleCreation(ctx context.Context, gametype *netwo
 	return ctrl.Result{}, nil
 }
 
+// emitEvent is used by the GameTypeReconciler to quickly add new events to objects
 func (r *GameTypeReconciler) emitEvent(object runtime.Object, eventtype string, reason utils.EventReason, message string) {
 	r.Recorder.Event(object, eventtype, string(reason), message)
 }
 
+// emitEventf is used by the GameTypeReconciler to add new events to objects with arguments
 func (r *GameTypeReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
 	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }
