@@ -33,6 +33,7 @@ spec:
             cpu: "250m"
             memory: "128Mi"
 ```
+
 1. Labels are copied down to the pod.
 2. Time the controller waits before allowing a forced deletion of the server.
 3. Determines if the controller can forcefully delete the server without permission. This would mean that it will not ask the [sidecar](sidecar.md) for permission.

@@ -11,12 +11,14 @@ apiVersion: network.unfamousthomas.me/v1alpha1
 kind: Fleet
 metadata:
   name: fleet-sample
+  labels:
+    some-label: value1 # (5)!
 spec:
   scaling:
-    replicas: 3 # The number of servers that should exist in this fleet
-    prioritizeAllowed: true # Whether to delete allowed servers first during downscaling
-    agePriority: oldest_first # Whether to delete oldest servers first or newest (newest_first)
-  spec: # The spec for the servers in this fleet (same as a Server object spec)
+    replicas: 3 # (1)!
+    prioritizeAllowed: true # (2)!
+    agePriority: oldest_first # (3)!
+  spec: # (4)!
     timeout: 5m
     allowForceDelete: false
     pod:
@@ -34,6 +36,13 @@ spec:
               cpu: "250m"
               memory: "128Mi"
 ```
+
+1. The number of servers that should exist in this fleet.
+2. Whether to delete allowed servers first during downscaling.
+3. Whether to delete oldest servers first or newest (`newest_first`).
+4. The spec for the servers in this fleet (same as a Server object spec). **Note**: When this is changed it applies to new servers created 
+but not to old ones.
+5. Labels are copied down to the [Server](server.md) resource.
 
 ### Scaling Behaviour
 * **Replicas**: The `replicas` field defines how many server instances should exist in the fleet at any time. This field ensures that the fleet always maintains the desired number of servers.

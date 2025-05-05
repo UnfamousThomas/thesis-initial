@@ -11,21 +11,29 @@ kind: GameAutoscaler
 metadata:
   name: gameautoscaler-sample
 spec:
-  gameName: gametype-sample #Gametype gametype-sample has to exist
+  gameName: gametype-sample # (1)!
   policy:
-    type: webhook #Currently only support Webhook
-    webhook: #Webhook specifications, either path and url OR service need to be defined
-      path: "/scale"
-      url: "http://localhost:2411"
-      service:
-        name: someService123
+    type: webhook # (2)! 
+    webhook: # (3)!
+      url: "http://localhost:2411" # (4)!
+      path: "/scale" # (5)!
+      service: # (6)!
+        name: someService123 
         namespace: default
         port: 8080
   sync:
-    type: fixedinterval #Currently only supports fixedinterval
-    interval: 10m #How often to send the webhook
+    type: fixedinterval # (7)!
+    interval: 10m # (8)!
 ```
 
+1. Gametype gametype-sample has to exist.
+2. Currently only support Webhook.
+3. Webhook specifications, either path and url OR service need to be defined.
+4. The url to send the request to. Combined with path if provided.
+5. Path to send the request to. Combined with url.
+6. Service to send the request to.
+7. Currently only supports fixedinterval.
+8. How often to send the webhook.
 ### Basic Concept
 The GameAutoscaler object simplifies the autoscaling of GameType resources by using a webhook. The key fields to configure are:
 
