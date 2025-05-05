@@ -619,17 +619,16 @@
 </ul>
 <p>Both the GET and POST methods operate on the same internal boolean value.</p>
 <h4 id="request-format">Request Format</h4>
-<p><strong>JSON Example:</strong></p>
-<pre><code class="language-json">{
-  &quot;allowed&quot;: true
-}
-
-</code></pre>
-<p><strong>Go Struct Example</strong>:</p>
-<pre><code class="language-go">type DeleteRequest struct {
-    Allowed bool `json:&quot;allowed&quot;`
-}
-</code></pre>
+<p><strong>JSON Example:</strong>
+<div class="language-json highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="p">{</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="nt">&quot;allowed&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="p">}</span>
+</span></code></pre></div>
+<strong>Go Struct Example</strong>:
+<div class="language-go highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kd">type</span><span class="w"> </span><span class="nx">DeleteRequest</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="nx">Allowed</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="s">`json:&quot;allowed&quot;`</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="p">}</span>
+</span></code></pre></div></p>
 <p>The boolean value controls whether the server considers itself safe to delete.
 * The controller usually issues GET requests to check the status.
 * The game server typically issues POST requests to update the status.</p>
@@ -646,17 +645,17 @@ If the controller detects <code>allowed = true</code>, it may already begin the 
 </ul>
 <p>Similar to <code>allow_delete</code>, these routes operate on an internal boolean value.</p>
 <h4 id="request-format_1">Request Format</h4>
-<p><strong>JSON Example</strong>:</p>
-<pre><code class="language-json">{
-  &quot;shutdown&quot;: true,
-}
-</code></pre>
-<p><strong>Go Struct Example</strong>:</p>
-<pre><code class="language-go">type ShutdownRequest struct {
-    Shutdown bool `json:&quot;shutdown&quot;`
-}
-</code></pre>
-<p>The controller sets this flag once it detects a deletion timestamp on the <code>Server</code> object.
+<p><strong>JSON Example</strong>:
+<div class="language-json highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">&quot;shutdown&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">}</span>
+</span></code></pre></div>
+<strong>Go Struct Example</strong>:
+<div class="language-go highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kd">type</span><span class="w"> </span><span class="nx">ShutdownRequest</span><span class="w"> </span><span class="kd">struct</span><span class="w"> </span><span class="p">{</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="nx">Shutdown</span><span class="w"> </span><span class="kt">bool</span><span class="w"> </span><span class="s">`json:&quot;shutdown&quot;`</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="p">}</span>
+</span></code></pre></div>
+The controller sets this flag once it detects a deletion timestamp on the <code>Server</code> object.
 The game server can poll this value to detect when a shutdown has been requested and gracefully handle it.</p>
 <p>The communication workflow can be viewed here:
 <img alt="Communication" src="../imgs/general_communication.png" title="General Communication" /></p>
