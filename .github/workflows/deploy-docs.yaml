@@ -2,10 +2,15 @@ name: Build Github Pages
 on:
   push:
     branches:
-      - main
-
+      - master
+    paths:
+      - 'documentation/**'
+      - '.github/workflows/deploy-docs.yaml'
+  workflow_dispatch:
 permissions:
   contents: write
+  pages: write
+  id-token: write
 
 jobs:
   deploy-docs:
