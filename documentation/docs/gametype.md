@@ -12,14 +12,14 @@ kind: GameType
 metadata:
   name: gametype-sample
 spec:
-  fleetSpec: # The specification for the fleet associated with this GameType
+  fleetSpec: # (1)! The specification for the fleet associated with this GameType
     scaling:
-      replicas: 3 # The number of replicas (servers) to maintain
-      prioritizeAllowed: true # Whether to delete allowed servers first when downscaling
-      agePriority: oldest_first # Whether to prioritize deleting oldest or newest servers when scaling down
-    spec: # The spec for the servers within this fleet (same as a Server object spec)
+      replicas: 3 # (2)!
+      prioritizeAllowed: true # (3)!
+      agePriority: oldest_first # (4)!
+    spec: # (5)!
       timeout: 5m
-      allowForceDelete: false # Whether to allow forceful deletion without user consent
+      allowForceDelete: false
       pod:
         containers:
           - name: example-container
@@ -36,6 +36,11 @@ spec:
                 memory: "128Mi"
 ```
 
+1. The specification for the fleet associated with this GameType.
+2. The number of replicas (servers) to maintain.
+3. Whether to delete allowed servers first when downscaling.
+4. Whether to prioritize deleting oldest or newest servers when scaling down.
+5. The spec for the servers within this fleet (same as a Server object spec).
 ### Purpose
 
 The **GameType** object currently acts as a wrapper for 1-2 fleets. While its manifest closely mirrors the **Fleet** object, it provides the additional role of handling multiple fleet versions. This allows for gradual upgrades or changes in server configurations, with the flexibility to roll out new fleet versions in a controlled manner.
