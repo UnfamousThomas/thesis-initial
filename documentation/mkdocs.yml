@@ -2,6 +2,10 @@ site_name: Thesis Documentation
 site_url: https://unfamousthomas.github.io/thesis
 theme:
   name: material
+  features:
+    - content.code.copy # Enable code-block copying
+    - content.mode.select #Enable selection
+    - content.code.annotate
 nav:
   - Home: index.md
   - Architecture: architecture.md
