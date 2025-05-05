@@ -13,11 +13,11 @@ apiVersion: network.unfamousthomas.me/v1alpha1
 kind: Server
 metadata:
   labels:
-    someLabel: example-label
+    someLabel: example-label # (1)!
   name: server-sample
 spec:
-  timeout: 5m # Time the controller waits before allowing a forced deletion of the server
-  allowForceDelete: false # Determines if the controller can forcefully delete the server without permission
+  timeout: 5m # (2)!
+  allowForceDelete: false # (3)!
   pod:
     containers:
       - name: example-container
@@ -33,6 +33,9 @@ spec:
             cpu: "250m"
             memory: "128Mi"
 ```
+1. Labels are copied down to the pod.
+2. Time the controller waits before allowing a forced deletion of the server.
+3. Determines if the controller can forcefully delete the server without permission. This would mean that it will not ask the [sidecar](sidecar.md) for permission.
 
 The `spec.pod` sub-object follows the typical Kubernetes pod spec format, allowing you to define multiple containers, volumes, and other pod configurations as necessary.
 
