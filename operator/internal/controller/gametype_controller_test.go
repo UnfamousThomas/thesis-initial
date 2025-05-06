@@ -57,7 +57,16 @@ var _ = Describe("GameType Controller", func() {
 			By("Making sure gametype does not exist")
 			err := k8sClient.Get(ctx, typeNamespacedName, gametype)
 			if err == nil {
-				return
+				By("Making sure gametype is not being deleted")
+				if gametype.DeletionTimestamp != nil {
+					Eventually(func() bool {
+						var gt networkv1alpha1.GameType
+						err := k8sClient.Get(ctx, typeNamespacedName, &gt)
+						return err == nil
+					}, time.Second*10, time.Millisecond*500).Should(BeTrue())
+				} else {
+					return
+				}
 			}
 			if !errors.IsNotFound(err) {
 				Expect(err).To(Succeed())
@@ -67,11 +76,11 @@ var _ = Describe("GameType Controller", func() {
 			err = k8sClient.Create(ctx, gametype)
 			Expect(err).To(BeNil())
 
-			Eventually(func() error {
+			Eventually(func() bool {
 				var gt networkv1alpha1.GameType
 				err := k8sClient.Get(ctx, typeNamespacedName, &gt)
-				return err
-			}, time.Second*10, time.Millisecond*500).Should(Succeed())
+				return err == nil
+			}, time.Second*10, time.Millisecond*500).Should(BeTrue())
 		})
 
 		AfterEach(func() {
