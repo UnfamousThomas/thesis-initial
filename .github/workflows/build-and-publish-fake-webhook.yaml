@@ -39,7 +39,7 @@ jobs:
 
       - name: Build image
         run: |
-          docker build ./sidecar/ \
+          docker build ./example/webhook/ \
             --tag "${{ env.IMAGE_ID }}:${{ env.VERSION }}" \
             --tag "${{ env.IMAGE_ID }}:latest" \
             --label "runnumber=${GITHUB_RUN_ID}"
