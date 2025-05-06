@@ -55,7 +55,7 @@ type AutoscalePolicy struct {
 
 type WebhookAutoscalerSpec struct {
 	// +kubebuilder:validation:Optional
-	Url  *string `json:"url"`
+	Url  *string `json:"url,omitempty"`
 	Path *string `json:"path"`
 	// +kubebuilder:validation:Optional
 	Service *Service `json:"service"`
