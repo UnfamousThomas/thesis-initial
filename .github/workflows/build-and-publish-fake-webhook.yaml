@@ -33,7 +33,7 @@ jobs:
           echo "Version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/sidecar
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/fake-webhook
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
           echo "IMAGE_ID=$IMAGE_ID" >> $GITHUB_ENV 
 
