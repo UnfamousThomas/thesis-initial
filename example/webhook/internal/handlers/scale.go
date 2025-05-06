@@ -36,6 +36,9 @@ func SetScalingInfo(a *app.App) func(http.ResponseWriter, *http.Request) {
 	})
 }
 
+// GetScalingInfo returns the info defined with SetScalingInfo.
+// In real life, this would do metric calculations and other complicated logic.
+// However, as an example, this should be enough.
 func GetScalingInfo(a *app.App) func(http.ResponseWriter, *http.Request) {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
