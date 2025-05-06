@@ -7,6 +7,9 @@ on:
       - "v*"
     branches:
       - master
+    paths:
+      - 'service/**'
+      - '.github/workflows/build-and-publish-service.yaml'
 
 jobs:
   push:
