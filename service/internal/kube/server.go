@@ -58,7 +58,7 @@ func DeleteServer(context context.Context, metadata Metadata, client *dynamic.Dy
 	}
 
 	if force {
-		err = sendDeleteAllowed(context, metadata.Name, clientset)
+		err = sendDeleteAllowed(context, metadata.Name, metadata.Namespace, clientset)
 		if err != nil {
 			return err
 		}
@@ -67,8 +67,8 @@ func DeleteServer(context context.Context, metadata Metadata, client *dynamic.Dy
 }
 
 // sendDeleteAllowed is used to tell the pods they can be deleted. This is used when force is true for DeleteServer
-func sendDeleteAllowed(context context.Context, name string, client *kubernetes.Clientset) error {
-	resource := client.CoreV1().Pods(name)
+func sendDeleteAllowed(context context.Context, name string, namespace string, client *kubernetes.Clientset) error {
+	resource := client.CoreV1().Pods(namespace)
 	pod, err := resource.Get(context, name+"-pod", metav1.GetOptions{})
 	if err != nil {
 		return err
