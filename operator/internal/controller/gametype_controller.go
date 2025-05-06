@@ -27,7 +27,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -114,7 +113,7 @@ func (r *GameTypeReconciler) updateReplicaCount(ctx context.Context, gametype *n
 	}
 	err := r.Get(ctx, name, fleet)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get fleet: %s", err)
 	}
 
 	if fleet == nil {
@@ -192,7 +191,6 @@ func (r *GameTypeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkv1alpha1.GameType{}).
 		Owns(&networkv1alpha1.Fleet{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 10}).
 		Complete(r)
 }
 

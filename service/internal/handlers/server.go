@@ -89,23 +89,17 @@ func DeleteServer(a *app.App) func(http.ResponseWriter, *http.Request) {
 
 		err = kube.DeleteServer(context.WithValue(context.Background(), "kube", "delete-server"), *request.Metadata, a.DynamicClient, a.ClientSet, request.Force)
 		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			log.Printf("Error deleting server: %v\n", err)
 			e := map[string]string{
-				"message": "Error creating server",
+				"message": "Error deleting server",
 				"error":   err.Error(),
 			}
-			jsonData, err := json.Marshal(e)
-			if err != nil {
-				log.Println("Error marshaling json:", err)
-				return
-			}
-
-			_, err = w.Write(jsonData)
+			err := json.NewEncoder(w).Encode(e)
 			if err != nil {
 				log.Println("Error writing response:", err)
 				return
 			}
-			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
