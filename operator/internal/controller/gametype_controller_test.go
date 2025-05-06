@@ -59,10 +59,11 @@ var _ = Describe("GameType Controller", func() {
 			if err == nil {
 				By("Making sure gametype is not being deleted")
 				if gametype.DeletionTimestamp != nil {
+					By("Check when deletion finished")
 					Eventually(func() bool {
 						var gt networkv1alpha1.GameType
 						err := k8sClient.Get(ctx, typeNamespacedName, &gt)
-						return err == nil
+						return errors.IsNotFound(err)
 					}, time.Second*10, time.Millisecond*500).Should(BeTrue())
 				} else {
 					return
