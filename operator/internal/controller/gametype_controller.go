@@ -87,7 +87,12 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	err := r.updateReplicaCount(ctx, gametype)
+	err := r.handleGametypeStatus(ctx, gametype, logger)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.updateReplicaCount(ctx, gametype)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, err
 	}
@@ -244,4 +249,26 @@ func (r *GameTypeReconciler) emitEvent(object runtime.Object, eventtype string, 
 // emitEventf is used by the GameTypeReconciler to add new events to objects with arguments
 func (r *GameTypeReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
 	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
+}
+
+func (r *GameTypeReconciler) handleGametypeStatus(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) error {
+	fleets, err := utils.GetFleetsForType(ctx, r.Client, gametype, logger)
+	if err != nil {
+		return err
+	}
+	var oldestFleet *networkv1alpha1.Fleet
+	for _, fleet := range fleets.Items {
+		if oldestFleet == nil || oldestFleet.GetCreationTimestamp().After(fleet.GetCreationTimestamp().Time) {
+			oldestFleet = &fleet
+		}
+	}
+
+	if oldestFleet != nil {
+		gametype.Status.CurrentFleetName = oldestFleet.Name
+		err = r.Status().Update(ctx, oldestFleet)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
