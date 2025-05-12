@@ -27,7 +27,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -88,7 +87,12 @@ func (r *GameTypeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	err := r.updateReplicaCount(ctx, gametype)
+	err := r.handleGametypeStatus(ctx, gametype, logger)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	err = r.updateReplicaCount(ctx, gametype)
 	if err != nil {
 		return ctrl.Result{Requeue: true}, err
 	}
@@ -114,11 +118,11 @@ func (r *GameTypeReconciler) updateReplicaCount(ctx context.Context, gametype *n
 	}
 	err := r.Get(ctx, name, fleet)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get fleet to update: %s", err)
 	}
 
 	if fleet == nil {
-		return fmt.Errorf("could not get fleet")
+		return fmt.Errorf("could not get fleet to update")
 	}
 	gametype.Status.CurrentFleetReplicas = fleet.Spec.Scaling.Replicas
 	err = r.Status().Update(ctx, gametype)
@@ -192,7 +196,6 @@ func (r *GameTypeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkv1alpha1.GameType{}).
 		Owns(&networkv1alpha1.Fleet{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 10}).
 		Complete(r)
 }
 
@@ -246,4 +249,27 @@ func (r *GameTypeReconciler) emitEvent(object runtime.Object, eventtype string, 
 // emitEventf is used by the GameTypeReconciler to add new events to objects with arguments
 func (r *GameTypeReconciler) emitEventf(object runtime.Object, eventtype string, reason utils.EventReason, message string, args ...interface{}) {
 	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
+}
+
+// handleGametypeStatus is used by the GameTypeReconciler to make sure the fleet in gametype status is the newest one.
+func (r *GameTypeReconciler) handleGametypeStatus(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) error {
+	fleets, err := utils.GetFleetsForType(ctx, r.Client, gametype, logger)
+	if err != nil {
+		return err
+	}
+	var youngestFleet *networkv1alpha1.Fleet
+	for _, fleet := range fleets.Items {
+		if youngestFleet == nil || fleet.GetCreationTimestamp().After(youngestFleet.GetCreationTimestamp().Time) {
+			youngestFleet = &fleet
+		}
+	}
+
+	if youngestFleet != nil {
+		gametype.Status.CurrentFleetName = youngestFleet.Name
+		err = r.Status().Update(ctx, youngestFleet)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
