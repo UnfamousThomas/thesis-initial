@@ -24,6 +24,10 @@ spec:
         command:
         - /manager
         env:
+        {{ if .Values.pprof.enabled }}
+        - name: PPROF_PORT
+          value: {{ .Values.pprof.port }}
+        {{ end }}
         - name: IMAGE_PULL_SECRET_NAME
           value: {{ quote .Values.controllerManager.manager.env.imagePullSecretName }}
         - name: KUBERNETES_CLUSTER_DOMAIN

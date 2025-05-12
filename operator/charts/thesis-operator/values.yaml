@@ -43,3 +43,6 @@ service:
   image:
     repository: ghcr.io/unfamousthomas/service
     tag: latest
+pprof:
+  enabled: false
+  port: 8802
