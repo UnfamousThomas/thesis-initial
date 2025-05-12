@@ -118,11 +118,11 @@ func (r *GameTypeReconciler) updateReplicaCount(ctx context.Context, gametype *n
 	}
 	err := r.Get(ctx, name, fleet)
 	if err != nil {
-		return fmt.Errorf("failed to get fleet: %s", err)
+		return fmt.Errorf("failed to get fleet to update: %s", err)
 	}
 
 	if fleet == nil {
-		return fmt.Errorf("could not get fleet")
+		return fmt.Errorf("could not get fleet to update")
 	}
 	gametype.Status.CurrentFleetReplicas = fleet.Spec.Scaling.Replicas
 	err = r.Status().Update(ctx, gametype)
@@ -251,21 +251,22 @@ func (r *GameTypeReconciler) emitEventf(object runtime.Object, eventtype string,
 	r.Recorder.Eventf(object, eventtype, string(reason), message, args...)
 }
 
+// handleGametypeStatus is used by the GameTypeReconciler to make sure the fleet in gametype status is the newest one.
 func (r *GameTypeReconciler) handleGametypeStatus(ctx context.Context, gametype *networkv1alpha1.GameType, logger logr.Logger) error {
 	fleets, err := utils.GetFleetsForType(ctx, r.Client, gametype, logger)
 	if err != nil {
 		return err
 	}
-	var oldestFleet *networkv1alpha1.Fleet
+	var youngestFleet *networkv1alpha1.Fleet
 	for _, fleet := range fleets.Items {
-		if oldestFleet == nil || oldestFleet.GetCreationTimestamp().After(fleet.GetCreationTimestamp().Time) {
-			oldestFleet = &fleet
+		if youngestFleet == nil || fleet.GetCreationTimestamp().After(youngestFleet.GetCreationTimestamp().Time) {
+			youngestFleet = &fleet
 		}
 	}
 
-	if oldestFleet != nil {
-		gametype.Status.CurrentFleetName = oldestFleet.Name
-		err = r.Status().Update(ctx, oldestFleet)
+	if youngestFleet != nil {
+		gametype.Status.CurrentFleetName = youngestFleet.Name
+		err = r.Status().Update(ctx, youngestFleet)
 		if err != nil {
 			return err
 		}
