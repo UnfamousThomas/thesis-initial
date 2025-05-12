@@ -145,7 +145,7 @@ func main() {
 		// LeaderElectionReleaseOnCancel: true,
 	}
 	if os.Getenv("PPROF_PORT") != "" {
-		ctrlOptions.PprofBindAddress = ":" + os.Getenv("PPOF_PORT")
+		ctrlOptions.PprofBindAddress = ":" + os.Getenv("PPROF_PORT")
 	}
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrlOptions)
 	if err != nil {
