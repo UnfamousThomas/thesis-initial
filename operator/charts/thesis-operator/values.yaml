@@ -40,3 +40,6 @@ webhookService:
   type: ClusterIP
 service:
   enabled: true
+pprof:
+  enabled: false
+  port: 8802
