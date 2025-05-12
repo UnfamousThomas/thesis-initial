@@ -40,3 +40,6 @@ webhookService:
   type: ClusterIP
 service:
   enabled: true
+  image:
+    repository: ghcr.io/unfamousthomas/service
+    tag: latest

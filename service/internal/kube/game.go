@@ -66,7 +66,7 @@ func removeFleetsForGame(ctx context.Context, metadata Metadata, client *dynamic
 		return err
 	}
 	for _, fleet := range fleets.Items {
-		gamename, exists := fleet.GetLabels()["game"]
+		gamename, exists := fleet.GetLabels()["type"]
 		if !exists || gamename != metadata.Name {
 			continue
 		}
