@@ -90,7 +90,7 @@ func forceDeleteFleet(ctx context.Context, metadata Metadata, client *dynamic.Dy
 		if !exists || fleetName != metadata.Name {
 			continue
 		}
-		err := sendDeleteAllowed(ctx, server.GetName()+"-pod", clientset)
+		err := sendDeleteAllowed(ctx, server.GetName(), server.GetNamespace(), clientset)
 		if err != nil {
 			return err
 		}

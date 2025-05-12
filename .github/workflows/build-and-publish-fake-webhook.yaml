@@ -1,4 +1,4 @@
-name: Build operator and publish
+name: Build fake webhook and publish
 
 on:
   workflow_dispatch:
@@ -8,8 +8,8 @@ on:
     branches:
       - master
     paths:
-      - 'operator/**'
-      - '.github/workflows/build-and-publish-operator.yaml'
+      - 'example/webhook/**'
+      - '.github/workflows/build-and-publish-fake-webhook.yaml'
 
 jobs:
   push:
@@ -33,13 +33,13 @@ jobs:
           echo "Version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           
-          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/controller
+          IMAGE_ID=ghcr.io/${{ github.repository_owner }}/fake-webhook
           IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
           echo "IMAGE_ID=$IMAGE_ID" >> $GITHUB_ENV 
 
       - name: Build image
         run: |
-          docker build ./operator/ \
+          docker build ./example/webhook/ \
             --tag "${{ env.IMAGE_ID }}:${{ env.VERSION }}" \
             --tag "${{ env.IMAGE_ID }}:latest" \
             --label "runnumber=${GITHUB_RUN_ID}"

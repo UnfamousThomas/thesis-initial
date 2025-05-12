@@ -35,7 +35,7 @@ var basicGametypeSpec = networkv1alpha1.GameTypeSpec{
 	FleetSpec: basicFleetSpec,
 }
 var _ = Describe("GameType Controller", func() {
-	Context("When reconciling a resource", func() {
+	Context("When reconciling a resource", Ordered, func() {
 		const resourceName = "test-gametype"
 		const namespace = "default"
 
@@ -54,23 +54,34 @@ var _ = Describe("GameType Controller", func() {
 				},
 				Spec: basicGametypeSpec,
 			}
-			By("Making sure server does not exist")
+			By("Making sure gametype does not exist")
 			err := k8sClient.Get(ctx, typeNamespacedName, gametype)
 			if err == nil {
-				return
+				By("Making sure gametype is not being deleted")
+				if gametype.DeletionTimestamp != nil {
+					By("Check when deletion finished")
+					Eventually(func() bool {
+						var gt networkv1alpha1.GameType
+						err := k8sClient.Get(ctx, typeNamespacedName, &gt)
+						return errors.IsNotFound(err)
+					}, time.Second*10, time.Millisecond*500).Should(BeTrue())
+				} else {
+					return
+				}
 			}
 			if !errors.IsNotFound(err) {
 				Expect(err).To(Succeed())
 			}
+
 			By("creating the custom resource for the Kind GameType")
 			err = k8sClient.Create(ctx, gametype)
 			Expect(err).To(BeNil())
 
-			Eventually(func() error {
+			Eventually(func() bool {
 				var gt networkv1alpha1.GameType
 				err := k8sClient.Get(ctx, typeNamespacedName, &gt)
-				return err
-			}, time.Second*10, time.Millisecond*500).Should(Succeed())
+				return err == nil
+			}, time.Second*10, time.Millisecond*500).Should(BeTrue())
 		})
 
 		AfterEach(func() {

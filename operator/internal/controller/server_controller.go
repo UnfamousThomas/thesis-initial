@@ -88,7 +88,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		controllerutil.RemoveFinalizer(server, SERVER_FINALIZER)
 		if err := r.Update(ctx, server); err != nil {
 			r.emitEvent(server, corev1.EventTypeWarning, utils.ReasonServerDeletionAllowed, "Failed to update server object")
-			return ctrl.Result{}, fmt.Errorf("failed to remove finalizer: %w", err)
+			return ctrl.Result{Requeue: true}, fmt.Errorf("failed to remove finalizer: %w", err)
 		}
 		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "Finalizer removed")
 		return ctrl.Result{Requeue: true}, nil // Return after finalizer removal
@@ -188,6 +188,7 @@ func (r *ServerReconciler) handleDeletion(ctx context.Context, server *networkv1
 	}
 	if !allowed {
 		r.emitEvent(pod, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "Server did not respond with allowed")
+		r.emitEvent(server, corev1.EventTypeNormal, utils.ReasonServerDeletionAllowed, "Server did not respond with allowed")
 		return errors.New("server deletion not allowed")
 	}
 
