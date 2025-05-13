@@ -42,9 +42,10 @@ const SERVER_FINALIZER = "servers.unfamousthomas.me/finalizer"
 // ServerReconciler reconciles a Server object
 type ServerReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	Recorder        record.EventRecorder
-	DeletionAllowed utils.Deletion
+	ErrorOnNotAllowed bool
+	Scheme            *runtime.Scheme
+	Recorder          record.EventRecorder
+	DeletionAllowed   utils.Deletion
 }
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=servers,verbs=get;list;watch;create;update;patch;delete
@@ -83,6 +84,9 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	// Handle resource deletion
 	if server.DeletionTimestamp != nil || !server.GetDeletionTimestamp().IsZero() {
 		if err := r.handleDeletion(ctx, server); err != nil {
+			if err.Error() == "server deletion not allowed" && !r.ErrorOnNotAllowed {
+				return ctrl.Result{Requeue: true}, nil
+			}
 			return ctrl.Result{Requeue: true}, fmt.Errorf("failed to handle server deletion: %s", err)
 		}
 		controllerutil.RemoveFinalizer(server, SERVER_FINALIZER)

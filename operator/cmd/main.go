@@ -156,10 +156,11 @@ func main() {
 	prodChecker := utils.ProdDeletionChecker{}
 
 	if err = (&controller.ServerReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		Recorder:        mgr.GetEventRecorderFor("server-controller"),
-		DeletionAllowed: prodChecker,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		ErrorOnNotAllowed: false,
+		Recorder:          mgr.GetEventRecorderFor("server-controller"),
+		DeletionAllowed:   prodChecker,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Server")
 		os.Exit(1)
