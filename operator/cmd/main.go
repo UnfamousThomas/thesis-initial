@@ -172,9 +172,10 @@ func main() {
 		}
 	}
 	if err = (&controller.FleetReconciler{
-		Client:   mgr.GetClient(),
-		Recorder: mgr.GetEventRecorderFor("fleet"),
-		Scheme:   mgr.GetScheme(),
+		Client:          mgr.GetClient(),
+		Recorder:        mgr.GetEventRecorderFor("fleet"),
+		DeletionChecker: prodChecker,
+		Scheme:          mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Fleet")
 		os.Exit(1)

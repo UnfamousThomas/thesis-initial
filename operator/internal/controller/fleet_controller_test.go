@@ -22,6 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	networkv1alpha1 "github.com/unfamousthomas/thesis-operator/api/v1alpha1"
+	"github.com/unfamousthomas/thesis-operator/internal/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -30,6 +31,7 @@ import (
 	"time"
 )
 
+var prodChecker = utils.ProdDeletionChecker{}
 var basicFleetSpec = networkv1alpha1.FleetSpec{
 	Scaling: networkv1alpha1.FleetScaling{
 		Replicas:          2,
@@ -79,9 +81,10 @@ var _ = Describe("Fleet Controller", func() {
 			Expect(k8sClient.Delete(ctx, fleet)).To(Succeed())
 			recorder := NewFakeRecorder()
 			reconciler := &FleetReconciler{
-				Client:   k8sClient,
-				Scheme:   k8sClient.Scheme(),
-				Recorder: recorder,
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				Recorder:        recorder,
+				DeletionChecker: prodChecker,
 			}
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).ToNot(HaveOccurred())
@@ -105,9 +108,10 @@ var _ = Describe("Fleet Controller", func() {
 			By("Setting up reconciler")
 			recorder := NewFakeRecorder()
 			reconciler := &FleetReconciler{
-				Client:   k8sClient,
-				Scheme:   k8sClient.Scheme(),
-				Recorder: recorder,
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				Recorder:        recorder,
+				DeletionChecker: prodChecker,
 			}
 
 			By("Initial reconcile")
@@ -161,9 +165,10 @@ var _ = Describe("Fleet Controller", func() {
 		})
 		It("should delete all servers and remove the finalizer on fleet deletion", func() {
 			reconciler := &FleetReconciler{
-				Client:   k8sClient,
-				Scheme:   k8sClient.Scheme(),
-				Recorder: NewFakeRecorder(),
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				Recorder:        NewFakeRecorder(),
+				DeletionChecker: prodChecker,
 			}
 
 			// Initial reconciles to create servers
@@ -204,9 +209,10 @@ var _ = Describe("Fleet Controller", func() {
 
 		It("should add a finalizer if not present", func() {
 			reconciler := &FleetReconciler{
-				Client:   k8sClient,
-				Scheme:   k8sClient.Scheme(),
-				Recorder: NewFakeRecorder(),
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				Recorder:        NewFakeRecorder(),
+				DeletionChecker: prodChecker,
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -219,9 +225,10 @@ var _ = Describe("Fleet Controller", func() {
 
 		It("should scale up servers to match the desired replicas", func() {
 			reconciler := &FleetReconciler{
-				Client:   k8sClient,
-				Scheme:   k8sClient.Scheme(),
-				Recorder: NewFakeRecorder(),
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				Recorder:        NewFakeRecorder(),
+				DeletionChecker: prodChecker,
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -262,9 +269,10 @@ var _ = Describe("Fleet Controller", func() {
 
 		It("should delete all servers when fleet is deleted", func() {
 			reconciler := &FleetReconciler{
-				Client:   k8sClient,
-				Scheme:   k8sClient.Scheme(),
-				Recorder: NewFakeRecorder(),
+				Client:          k8sClient,
+				Scheme:          k8sClient.Scheme(),
+				Recorder:        NewFakeRecorder(),
+				DeletionChecker: prodChecker,
 			}
 
 			// Ensure the fleet is scaled first
@@ -307,9 +315,10 @@ var _ = Describe("Fleet Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &FleetReconciler{
-				Client:   fakeClient,
-				Scheme:   k8sClient.Scheme(),
-				Recorder: NewFakeRecorder(),
+				Client:          fakeClient,
+				Scheme:          k8sClient.Scheme(),
+				Recorder:        NewFakeRecorder(),
+				DeletionChecker: prodChecker,
 			}
 
 			By("Fail Get")
@@ -347,9 +356,10 @@ var _ = Describe("Fleet Controller", func() {
 				FailPatch:  false,
 			}
 			reconciler := &FleetReconciler{
-				Client:   fakeClient,
-				Scheme:   k8sClient.Scheme(),
-				Recorder: NewFakeRecorder(),
+				Client:          fakeClient,
+				Scheme:          k8sClient.Scheme(),
+				Recorder:        NewFakeRecorder(),
+				DeletionChecker: prodChecker,
 			}
 
 			By("Fail Create")

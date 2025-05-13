@@ -35,8 +35,9 @@ const FLEET_FINALIZER = "fleets.unfamousthomas.me/finalizer"
 // FleetReconciler reconciles a Fleet object
 type FleetReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Scheme          *runtime.Scheme
+	Recorder        record.EventRecorder
+	DeletionChecker utils.FleetDeletionChecker
 }
 
 // +kubebuilder:rbac:groups=network.unfamousthomas.me,resources=fleets,verbs=get;list;watch;create;update;patch;delete
@@ -128,7 +129,7 @@ func (r *FleetReconciler) scaleServerCount(ctx context.Context, fleet *networkv1
 		if err != nil {
 			return err
 		}
-		server, err := utils.FindDeleteServer(ctx, fleet, servers, r.Client)
+		server, err := utils.FindDeleteServer(ctx, fleet, servers, r.Client, r.DeletionChecker)
 		if err != nil {
 			return err
 		}
