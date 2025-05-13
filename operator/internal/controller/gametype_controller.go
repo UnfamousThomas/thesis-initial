@@ -180,9 +180,9 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 				oldestFleet = &fleet
 			}
 		}
-		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeSpecUpdated, "Deleting extra fleet")
 
 		if oldestFleet != nil && oldestFleet.GetDeletionTimestamp() == nil {
+			r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeSpecUpdated, "Deleting extra fleet")
 			if err := r.Delete(ctx, oldestFleet); err != nil {
 				return ctrl.Result{}, err, true
 			}
@@ -210,6 +210,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 			return err
 		}
 		for _, fleet := range fleets.Items {
+			r.emitEventf(gametype, corev1.EventTypeNormal, utils.ReasonGameTypeDeleting, "Deleting fleet %s", fleet.Name)
 			if err := r.Delete(ctx, &fleet); err != nil {
 				r.emitEventf(gametype, corev1.EventTypeWarning, utils.ReasonGametypeServersDeleted, "Failed to delete fleet %s", fleet.Name)
 				return err

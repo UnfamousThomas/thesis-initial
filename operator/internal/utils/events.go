@@ -16,6 +16,7 @@ const (
 	ReasonFleetScaleServers   EventReason = "FleetScaleServers"
 
 	ReasonGametypeInitialized     EventReason = "GametypeInitialized"
+	ReasonGameTypeDeleting        EventReason = "GameTypeDeleting"
 	ReasonGametypeServersDeleted  EventReason = "GametypeServersDeleted"
 	ReasonGametypeSpecUpdated     EventReason = "GametypeSpecUpdated"
 	ReasonGametypeReplicasUpdated EventReason = "GametypeReplicasUpdated"
