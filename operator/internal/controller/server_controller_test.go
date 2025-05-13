@@ -101,10 +101,11 @@ var _ = Describe("ServerReconciler", func() {
 				deleteAllowed: make(map[string]bool),
 			}
 			reconciler := &ServerReconciler{
-				Client:          k8sClient,
-				Scheme:          k8sClient.Scheme(),
-				DeletionAllowed: checker,
-				Recorder:        fakeRecorder,
+				Client:            k8sClient,
+				Scheme:            k8sClient.Scheme(),
+				ErrorOnNotAllowed: true,
+				DeletionAllowed:   checker,
+				Recorder:          fakeRecorder,
 			}
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
 			Expect(err).To(BeNil())
@@ -155,10 +156,11 @@ var _ = Describe("ServerReconciler", func() {
 				deleteAllowed: make(map[string]bool),
 			}
 			reconciler := &ServerReconciler{
-				Client:          k8sClient,
-				Scheme:          k8sClient.Scheme(),
-				DeletionAllowed: checker,
-				Recorder:        recorder,
+				Client:            k8sClient,
+				Scheme:            k8sClient.Scheme(),
+				ErrorOnNotAllowed: true,
+				DeletionAllowed:   checker,
+				Recorder:          recorder,
 			}
 			By("Reconciling the resource")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -188,10 +190,11 @@ var _ = Describe("ServerReconciler", func() {
 				deleteAllowed: make(map[string]bool),
 			}
 			reconciler := &ServerReconciler{
-				Client:          k8sClient,
-				Scheme:          k8sClient.Scheme(),
-				DeletionAllowed: checker,
-				Recorder:        recorder,
+				Client:            k8sClient,
+				Scheme:            k8sClient.Scheme(),
+				ErrorOnNotAllowed: true,
+				DeletionAllowed:   checker,
+				Recorder:          recorder,
 			}
 			By("Reconciling the resource")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{
@@ -243,10 +246,11 @@ var _ = Describe("ServerReconciler", func() {
 				deleteAllowed: make(map[string]bool),
 			}
 			reconciler := &ServerReconciler{
-				Client:          k8sClient,
-				Scheme:          k8sClient.Scheme(),
-				DeletionAllowed: checker,
-				Recorder:        fakeRecorder,
+				Client:            k8sClient,
+				Scheme:            k8sClient.Scheme(),
+				ErrorOnNotAllowed: true,
+				DeletionAllowed:   checker,
+				Recorder:          fakeRecorder,
 			}
 			By("Reconcile the basic server")
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -343,10 +347,11 @@ var _ = Describe("ServerReconciler", func() {
 			}
 
 			reconciler := &ServerReconciler{
-				Client:          fakeClient,
-				Scheme:          k8sClient.Scheme(),
-				DeletionAllowed: checker,
-				Recorder:        NewFakeRecorder(),
+				Client:            fakeClient,
+				Scheme:            k8sClient.Scheme(),
+				ErrorOnNotAllowed: true,
+				DeletionAllowed:   checker,
+				Recorder:          NewFakeRecorder(),
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
@@ -371,10 +376,11 @@ var _ = Describe("ServerReconciler", func() {
 			}
 			recorder := NewFakeRecorder()
 			reconciler := &ServerReconciler{
-				Client:          fakeClient,
-				Scheme:          k8sClient.Scheme(),
-				DeletionAllowed: checker,
-				Recorder:        recorder,
+				Client:            fakeClient,
+				Scheme:            k8sClient.Scheme(),
+				ErrorOnNotAllowed: true,
+				DeletionAllowed:   checker,
+				Recorder:          recorder,
 			}
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
