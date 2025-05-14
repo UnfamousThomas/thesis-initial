@@ -57,6 +57,14 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
+	// Handle resource deletion
+	if fleet.DeletionTimestamp != nil || !fleet.GetDeletionTimestamp().IsZero() {
+		if err := r.handleDeletion(ctx, fleet); err != nil {
+			return ctrl.Result{Requeue: true}, fmt.Errorf("failed to handle fleet deletion: %w", err)
+		}
+		return ctrl.Result{Requeue: true}, nil // Return after so we do not accidentally scale again
+	}
+
 	// Handle finalizer addition
 	if fleet.DeletionTimestamp == nil && !controllerutil.ContainsFinalizer(fleet, FLEET_FINALIZER) {
 		controllerutil.AddFinalizer(fleet, FLEET_FINALIZER)
@@ -66,14 +74,6 @@ func (r *FleetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 		r.emitEvent(fleet, corev1.EventTypeNormal, utils.ReasonFleetInitialized, "Fleet finalizers added")
 		return ctrl.Result{Requeue: true}, nil
-	}
-
-	// Handle resource deletion
-	if fleet.DeletionTimestamp != nil || !fleet.GetDeletionTimestamp().IsZero() {
-		if err := r.handleDeletion(ctx, fleet); err != nil {
-			return ctrl.Result{}, fmt.Errorf("failed to handle fleet deletion: %w", err)
-		}
-		return ctrl.Result{}, nil // Return after so we do not accidentally scale again
 	}
 
 	servers, err := r.getServers(ctx, fleet)

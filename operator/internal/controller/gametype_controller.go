@@ -156,19 +156,17 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 			r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeSpecUpdated, "Creating new fleet")
 			res, err := r.handleCreation(ctx, gametype, logger)
 			return res, err, true
-		} else {
-			if gametype.Spec.FleetSpec.Scaling.Replicas != gametype.Status.CurrentFleetReplicas {
-				gametype.Status.CurrentFleetReplicas = gametype.Spec.FleetSpec.Scaling.Replicas
-				fleet.Spec.Scaling.Replicas = gametype.Spec.FleetSpec.Scaling.Replicas
-				if err := r.Update(ctx, &fleet); err != nil {
-					return ctrl.Result{Requeue: true}, err, true
-				}
-				err := r.Status().Update(ctx, gametype)
-				if err != nil {
-					return ctrl.Result{Requeue: true}, err, true
-				}
-				r.emitEventf(gametype, corev1.EventTypeNormal, utils.ReasonGametypeReplicasUpdated, "Scaling gametype to %d", fleet.Spec.Scaling.Replicas)
+		} else if gametype.Spec.FleetSpec.Scaling.Replicas != gametype.Status.CurrentFleetReplicas {
+			gametype.Status.CurrentFleetReplicas = gametype.Spec.FleetSpec.Scaling.Replicas
+			fleet.Spec.Scaling.Replicas = gametype.Spec.FleetSpec.Scaling.Replicas
+			if err := r.Update(ctx, &fleet); err != nil {
+				return ctrl.Result{Requeue: true}, err, true
 			}
+			err := r.Status().Update(ctx, gametype)
+			if err != nil {
+				return ctrl.Result{Requeue: true}, err, true
+			}
+			r.emitEventf(gametype, corev1.EventTypeNormal, utils.ReasonGametypeReplicasUpdated, "Scaling gametype to %d", fleet.Spec.Scaling.Replicas)
 		}
 	}
 	if len(fleets.Items) > 1 {
@@ -180,9 +178,9 @@ func (r *GameTypeReconciler) handleUpdating(ctx context.Context, gametype *netwo
 				oldestFleet = &fleet
 			}
 		}
-		r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeSpecUpdated, "Deleting extra fleet")
 
 		if oldestFleet != nil && oldestFleet.GetDeletionTimestamp() == nil {
+			r.emitEvent(gametype, corev1.EventTypeNormal, utils.ReasonGametypeSpecUpdated, "Deleting extra fleet")
 			if err := r.Delete(ctx, oldestFleet); err != nil {
 				return ctrl.Result{}, err, true
 			}
@@ -210,6 +208,7 @@ func (r *GameTypeReconciler) handleDeletion(ctx context.Context, gametype *netwo
 			return err
 		}
 		for _, fleet := range fleets.Items {
+			r.emitEventf(gametype, corev1.EventTypeNormal, utils.ReasonGameTypeDeleting, "Deleting fleet %s", fleet.Name)
 			if err := r.Delete(ctx, &fleet); err != nil {
 				r.emitEventf(gametype, corev1.EventTypeWarning, utils.ReasonGametypeServersDeleted, "Failed to delete fleet %s", fleet.Name)
 				return err
